@@ -51,13 +51,13 @@ public:
             /**
              * @brief 角速度
              */
-            double omegaTheta;
-            double omegaPhi;
+            float omegaTheta;
+            float omegaPhi;
             /**
              * @brief 角加速度
              */
-            double accOmegaTheta;
-            double accOmegaPhi;
+            float accOmegaTheta;
+            float accOmegaPhi;
         };
 
 //Q16 定点数转浮点数
@@ -75,8 +75,8 @@ public:
             inv_get_sensor_type_euler(data, &accuracy, (inv_time_t *)&timestamp);
             attr.euler = {
                 .Pitch = ToFloat(data[0]),
-                .Roll = ToFloat(data[2]),
-                .Yaw = ToFloat(data[3])};
+                .Roll = ToFloat(data[1]),
+                .Yaw = ToFloat(data[2])};
             //角速度
             inv_get_sensor_type_gyro(data, &accuracy, (inv_time_t *)&timestamp);
             attr.omegaTheta = ToFloat(data[0]);
@@ -143,7 +143,8 @@ public:
         if (mpu.updateLoop())
         {
             auto cur = provider->fetchAttr();
-            auto errOmega = cur.omegaTheta - getOmegaByAngle(cur.euler.Roll, 60, config.gravity, config.radius);
+            auto expect = getOmegaByAngle(cur.euler.Pitch, 60, config.gravity, config.radius);
+            auto errOmega = cur.omegaTheta - expect;
             motorYZ->updateMotorDuty(pidYZ.pushNewErr(errOmega), cur.omegaTheta);
         }
     }

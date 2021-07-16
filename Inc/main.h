@@ -58,22 +58,24 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define XL_IN1_Pin GPIO_PIN_0
-#define XL_IN1_GPIO_Port GPIOC
-#define XL_IN2_Pin GPIO_PIN_1
-#define XL_IN2_GPIO_Port GPIOC
-#define XR_IN1_Pin GPIO_PIN_2
-#define XR_IN1_GPIO_Port GPIOC
-#define XR_IN2_Pin GPIO_PIN_3
-#define XR_IN2_GPIO_Port GPIOC
-#define YL_IN1_Pin GPIO_PIN_4
-#define YL_IN1_GPIO_Port GPIOA
-#define YL_IN2_Pin GPIO_PIN_5
-#define YL_IN2_GPIO_Port GPIOA
-#define YR_IN1_Pin GPIO_PIN_6
-#define YR_IN1_GPIO_Port GPIOA
-#define YR_IN2_Pin GPIO_PIN_7
-#define YR_IN2_GPIO_Port GPIOA
+#define YL_IN1_Pin GPIO_PIN_12
+#define YL_IN1_GPIO_Port GPIOB
+#define YL_IN2_Pin GPIO_PIN_13
+#define YL_IN2_GPIO_Port GPIOB
+#define YR_IN1_Pin GPIO_PIN_14
+#define YR_IN1_GPIO_Port GPIOB
+#define YR_IN2_Pin GPIO_PIN_15
+#define YR_IN2_GPIO_Port GPIOB
+#define XR_IN2_Pin GPIO_PIN_11
+#define XR_IN2_GPIO_Port GPIOG
+#define XR_IN1_Pin GPIO_PIN_12
+#define XR_IN1_GPIO_Port GPIOG
+#define XL_IN2_Pin GPIO_PIN_13
+#define XL_IN2_GPIO_Port GPIOG
+#define XL_IN1_Pin GPIO_PIN_14
+#define XL_IN1_GPIO_Port GPIOG
+#define MPU_INT_Pin GPIO_PIN_5
+#define MPU_INT_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

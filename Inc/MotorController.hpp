@@ -30,6 +30,7 @@ public:
     {
         if (signbit(omega) ^ signbit(duty))
         {
+            duty = abs(duty);
             //顺时针加速
             left->setMode(Motor::Backward);
             left->setDuty(duty);
@@ -38,6 +39,7 @@ public:
         }
         else
         {
+            duty = abs(duty);
             //逆时针加速
             left->setMode(Motor::Forward);
             left->setDuty(duty);
