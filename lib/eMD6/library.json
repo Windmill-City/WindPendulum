@@ -1,0 +1,57 @@
+{
+    "name": "eMD6",
+    "version": "0.1.5",
+    "description": "InvenSense's Motion Driver 6",
+    "keywords": ["Motion Driver", "InvenSense"],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Windmill-City/eMD6.git"
+    },
+    "authors": [{
+            "name": "Windmill_City",
+            "maintainer": true
+        },
+        {
+            "name": "InvenSense Corporation",
+            "url": "https://invensense.tdk.com/",
+            "maintainer": false
+        }
+    ],
+    "license": "Apache-2.0",
+    "frameworks": "*",
+    "platforms": ["ststm32", "timsp430"],
+    "build": {
+        "includeDirs": [
+            "include",
+            "include/eMPL",
+            "include/eMPL-hal",
+            "include/mllite",
+            "include/mpl"
+        ],
+        "srcDir": "src",
+        "srcFilter": [
+            "+<eMPL/*.c>",
+            "+<eMPL-hal/*.c>",
+            "+<mllite/*.c>",
+            "+<stm32L/*.c>"
+        ],
+        "flags": [
+            "-D MPU6050",
+            "-D TARGET_STM32F1XX_HAL",
+            "-I include",
+            "-I include/eMPL",
+            "-I include/eMPL-hal",
+            "-I include/mllite",
+            "-I include/mpl",
+            "-L lib/mpl/",
+            "-l libmplmpu"
+        ]
+    },
+    "export": {
+        "include": [
+            "include/*",
+            "lib/*",
+            "src/*"
+        ]
+    }
+}
