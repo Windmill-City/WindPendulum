@@ -14,7 +14,7 @@
 #define LOG_TAG "WindPendulum"
 
 //Q16 定点数转浮点数
-#define ToFloat(fixed, count) ((float)fixed / (float)pow(2, 30))
+#define ToFloat(fixed, count) (((float)fixed) / pow(2, count))
 
 /**
  * @brief 重力加速度
@@ -51,23 +51,27 @@ struct Attribute fetchAttr(struct MPU6050 data_)
 
     struct Attribute attr;
 
-    auto q0 = ToFloat(data_.quat[0], 30);
-    auto q1 = ToFloat(data_.quat[1], 30);
-    auto q2 = ToFloat(data_.quat[2], 30);
-    auto q3 = ToFloat(data_.quat[3], 30);
-
     //欧拉角
     inv_get_sensor_type_euler(data, &accuracy, (inv_time_t *)&timestamp);
 
-    attr.euler.Pitch = asin(-2 * q1 * q3 + 2 * q0 * q2) * 57.3f;
-    attr.euler.Roll = atan2(2 * q2 * q3 + 2 * q0 * q1, -2 * q1 * q1 - 2 * q2 * q2 + 1) * 57.3f;
-    attr.euler.Yaw = atan2(2 * (q1 * q2 + q0 * q3), q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3) * 57.3f;
+    attr.euler.Pitch = ToFloat(data[0], 16);
+    attr.euler.Roll = ToFloat(data[1], 16);
+    attr.euler.Yaw = ToFloat(data[2], 16);
 
-    // attr.euler.Pitch = ToFloat(data[0], 16);
-    // attr.euler.Roll = ToFloat(data[1], 16);
-    // attr.euler.Yaw = ToFloat(data[2], 16);
+    log_i("Euler: Pitch:%d Roll:%d Yaw:%d", (int)(attr.euler.Pitch), (int)(attr.euler.Roll), (int)(attr.euler.Yaw));
 
-    log_i("Euler: %d %d %d", (int)(attr.euler.Pitch * 100), (int)(attr.euler.Roll*100), (int)(attr.euler.Yaw*100));
+    //角速度
+    inv_get_sensor_type_gyro(data, &accuracy, (inv_time_t *)&timestamp);
+    attr.omegaTheta = ToFloat(data[0], 16);
+    attr.omegaPhi = ToFloat(data[1], 16);
+
+    log_i("Omega: %d %d %d", (int)(attr.omegaTheta), (int)(attr.omegaPhi), ToFloat(data[2], 16));
+    //角加速度
+    inv_get_sensor_type_accel(data, &accuracy, (inv_time_t *)&timestamp);
+    attr.accOmegaTheta = ToFloat(data[0], 16);
+    attr.accOmegaPhi = ToFloat(data[1], 16);
+
+    log_i("Acc: %d %d %d", (int)(attr.accOmegaTheta * 100), (int)(attr.accOmegaPhi * 100), ToFloat(data[2], 16));
 
     return attr;
 }
@@ -99,6 +103,10 @@ void wind_pendulum_init()
 {
     log_i("Begin init");
     mpu6050_init(20, true);
+
+    HAL_Delay(5000);
+
+    mpu_6050_run_self_test();
 
     //XZ平面
     motorXZ.Id = 1;

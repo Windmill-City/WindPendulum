@@ -38,6 +38,8 @@
         "flags": [
             "-D MPU6050",
             "-D TARGET_STM32F1XX_HAL",
+            "-D EMPL",
+            "-D USE_DMP",
             "-I include",
             "-I include/eMPL",
             "-I include/eMPL-hal",

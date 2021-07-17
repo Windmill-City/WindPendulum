@@ -212,9 +212,9 @@ struct platform_data_s
  * @brief 旋转矩阵, 根据你的 MPU 在设备中方位来设定
  */
 static struct platform_data_s gyro_pdata = {
-    .orientation = {0, 0, 1,
-                    0, 1, 0,
-                    -1, 0, 0}};
+    .orientation = {0, 1, 0,
+                    0, 0, 1,
+                    1, 0, 0}};
 
 /**
  * @brief 配置 MPL参数
@@ -424,6 +424,60 @@ inv_error_t mpu6050_init(int sampleRate, bool useDMP)
     log_i("Initialize finished");
 }
 
+void mpu_6050_run_self_test()
+{
+    int result;
+    long gyro[3], accel[3];
+
+    result = mpu_run_self_test(gyro, accel);
+
+    if (result == 0x7)
+    {
+        MPL_LOGI("Passed!\n");
+        MPL_LOGI("accel: %7.4f %7.4f %7.4f\n",
+                 accel[0] / 65536.f,
+                 accel[1] / 65536.f,
+                 accel[2] / 65536.f);
+        MPL_LOGI("gyro: %7.4f %7.4f %7.4f\n",
+                 gyro[0] / 65536.f,
+                 gyro[1] / 65536.f,
+                 gyro[2] / 65536.f);
+
+        /* Push the calibrated data to the MPL library.
+         *
+         * MPL expects biases in hardware units << 16, but self test returns
+		 * biases in g's << 16.
+		 */
+        unsigned short accel_sens;
+        float gyro_sens;
+
+        mpu_get_accel_sens(&accel_sens);
+        accel[0] *= accel_sens;
+        accel[1] *= accel_sens;
+        accel[2] *= accel_sens;
+        inv_set_accel_bias(accel, 3);
+        mpu_get_gyro_sens(&gyro_sens);
+        gyro[0] = (long)(gyro[0] * gyro_sens);
+        gyro[1] = (long)(gyro[1] * gyro_sens);
+        gyro[2] = (long)(gyro[2] * gyro_sens);
+        inv_set_gyro_bias(gyro, 3);
+    }
+    else
+    {
+        if (!(result & 0x1))
+            MPL_LOGE("Gyro failed.\n");
+        if (!(result & 0x2))
+            MPL_LOGE("Accel failed.\n");
+        if (!(result & 0x4))
+            MPL_LOGE("Compass failed.\n");
+    }
+
+    /* Let MPL know that contiguity was broken. */
+    inv_accel_was_turned_off();
+    inv_gyro_was_turned_off();
+    inv_compass_was_turned_off();
+}
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -433,7 +487,7 @@ inv_error_t mpu6050_init(int sampleRate, bool useDMP)
  * @param more FIFO中剩余数据数量
  * @return 是否有新数据
  */
-bool fifo_read(unsigned char *more, struct MPU6050* data)
+bool fifo_read(unsigned char *more, struct MPU6050 *data)
 {
     bool newData = false;
 

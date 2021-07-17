@@ -130,8 +130,8 @@ int main(void)
     if (fifo_read(&more, &data))
     {
       fetchAttr(data);
-      HAL_Delay(10);
     }
+    HAL_Delay(10);
   }
   /* USER CODE END 3 */
 }
