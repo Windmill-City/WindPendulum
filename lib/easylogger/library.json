@@ -1,0 +1,31 @@
+{
+    "name": "EasyLogger",
+    "version": "2.2.0",
+    "description": "Easy logger",
+    "keywords": ["logger"],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/armink/EasyLogger"
+    },
+    "license": "MIT",
+    "frameworks": "*",
+    "platforms": ["*"],
+    "build": {
+        "includeDirs": [
+            "inc"
+        ],
+        "srcDir": "src",
+        "srcFilter": [
+            "+<*.c>"
+        ],
+        "flags": [
+            "-I inc"
+        ]
+    },
+    "export": {
+        "include": [
+            "inc/*",
+            "src/*"
+        ]
+    }
+}

@@ -12,6 +12,10 @@
         "mltypes.h": "c",
         "new": "cpp",
         "motorcontroller.hpp": "c",
-        "motor.hpp": "c"
+        "motor.hpp": "c",
+        "array": "cpp",
+        "string": "cpp",
+        "string_view": "cpp",
+        "pwmgenerater.hpp": "c"
     }
 }

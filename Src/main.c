@@ -27,7 +27,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "WindPendulum.hpp"
+#include <elog.h>
+#include "WindPendulum.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -58,45 +59,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void setMotorMode(Motor::Mode mode, GPIO_TypeDef *port1, uint16_t pin1, GPIO_TypeDef *port2, u_int16_t pin2)
-{
-  switch (mode)
-  {
-  case Motor::Free:
-    HAL_GPIO_WritePin(port1, pin1, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(port2, pin2, GPIO_PIN_RESET);
-    break;
-  case Motor::Brake:
-    HAL_GPIO_WritePin(port1, pin1, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(port2, pin2, GPIO_PIN_SET);
-    break;
-  case Motor::Forward:
-    HAL_GPIO_WritePin(port1, pin1, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(port2, pin2, GPIO_PIN_RESET);
-    break;
-  case Motor::Backward:
-    HAL_GPIO_WritePin(port1, pin1, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(port2, pin2, GPIO_PIN_SET);
-    break;
-  }
-}
 
-Motor::Mode getMotorMode(GPIO_TypeDef *port1, uint16_t pin1, GPIO_TypeDef *port2, u_int16_t pin2)
-{
-  auto pin1State = HAL_GPIO_ReadPin(port1, pin1);
-  auto pin2State = HAL_GPIO_ReadPin(port2, pin2);
-
-  //Free or Brake
-  if (pin1State == pin2State)
-  {
-    return pin1State == GPIO_PIN_RESET ? Motor::Free : Motor::Brake;
-  }
-  else
-  {
-    //Forward or Backward
-    return pin1State == GPIO_PIN_SET ? Motor::Forward : Motor::Backward;
-  }
-}
 /* USER CODE END 0 */
 
 /**
@@ -116,6 +79,16 @@ int main(void)
 
   /* USER CODE BEGIN Init */
 
+  /* initialize EasyLogger */
+  elog_init();
+  /* set EasyLogger log format */
+  elog_set_fmt(ELOG_LVL_ASSERT, ELOG_FMT_ALL);
+  elog_set_fmt(ELOG_LVL_ERROR, ELOG_FMT_LVL | ELOG_FMT_TAG | ELOG_FMT_TIME);
+  elog_set_fmt(ELOG_LVL_WARN, ELOG_FMT_LVL | ELOG_FMT_TAG | ELOG_FMT_TIME);
+  elog_set_fmt(ELOG_LVL_INFO, ELOG_FMT_LVL | ELOG_FMT_TAG | ELOG_FMT_TIME);
+  elog_set_fmt(ELOG_LVL_DEBUG, ELOG_FMT_ALL & ~(ELOG_FMT_FUNC | ELOG_FMT_T_INFO | ELOG_FMT_P_INFO));
+  elog_set_fmt(ELOG_LVL_VERBOSE, ELOG_FMT_ALL & ~(ELOG_FMT_FUNC | ELOG_FMT_T_INFO | ELOG_FMT_P_INFO));
+
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -127,46 +100,16 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_I2C1_Init();
   MX_RTC_Init();
   MX_TIM1_Init();
   MX_USART1_UART_Init();
+  MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
-  using namespace std::placeholders;
-  //平面 XZ
-  auto pwmXL = PWMGenerater(&htim1, TIM1->CCR1);
-  auto pwmXR = PWMGenerater(&htim1, TIM1->CCR2);
-  auto motorXL = Motor(
-      &pwmXL,
-      //Motor::Config -> minStartupTime, minStopTime, minDuty, minStartupDuty, maxStartupDuty, maxDuty
-      {50, 20, 1000, 1000, 12000, 16000},
-      std::bind(setMotorMode, _1, XL_IN1_GPIO_Port, XL_IN1_Pin, XL_IN2_GPIO_Port, XL_IN2_Pin),
-      std::bind(getMotorMode, XL_IN1_GPIO_Port, XL_IN1_Pin, XL_IN2_GPIO_Port, XL_IN2_Pin));
-  auto motorXR = Motor(
-      &pwmXR,
-      {50, 20, 1000, 1000, 12000, 16000},
-      std::bind(setMotorMode, _1, XR_IN1_GPIO_Port, XR_IN1_Pin, XR_IN2_GPIO_Port, XR_IN2_Pin),
-      std::bind(getMotorMode, XR_IN1_GPIO_Port, XR_IN1_Pin, XR_IN2_GPIO_Port, XR_IN2_Pin));
-  auto motorXZ = MotorController(&motorXL, &motorXR);
-  //平面 YZ
-  auto pwmYL = PWMGenerater(&htim1, TIM1->CCR3);
-  auto pwmYR = PWMGenerater(&htim1, TIM1->CCR4);
-  auto motorYL = Motor(
-      &pwmYL,
-      {50, 20, 1000, 1000, 12000, 16000},
-      std::bind(setMotorMode, _1, YL_IN1_GPIO_Port, YL_IN1_Pin, YL_IN2_GPIO_Port, YL_IN2_Pin),
-      std::bind(getMotorMode, YL_IN1_GPIO_Port, YL_IN1_Pin, YL_IN2_GPIO_Port, YL_IN2_Pin));
-  auto motorYR = Motor(
-      &pwmYR,
-      {50, 20, 1000, 1000, 12000, 16000},
-      std::bind(setMotorMode, _1, YR_IN1_GPIO_Port, YR_IN1_Pin, YR_IN2_GPIO_Port, YR_IN2_Pin),
-      std::bind(getMotorMode, YR_IN1_GPIO_Port, YR_IN1_Pin, YR_IN2_GPIO_Port, YR_IN2_Pin));
-  auto motorYZ = MotorController(&motorYL, &motorYR);
 
-  //风力摆姿态解算
-  auto attrProvider = WindPendulum::AttributeProvider();
-  //风力摆核心控制器
-  auto windPendulum = WindPendulum(&motorXZ, &motorYZ, {9.8, 0.65}, &attrProvider);
+  /* start EasyLogger */
+  elog_start();
+
+  wind_pendulum_init();
 
   //启动PWM
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
@@ -182,7 +125,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    windPendulum.updateLoop();
   }
   /* USER CODE END 3 */
 }
@@ -200,7 +142,7 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI | RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
@@ -214,8 +156,7 @@ void SystemClock_Config(void)
   }
   /** Initializes the CPU, AHB and APB buses clocks
   */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
@@ -255,7 +196,7 @@ void Error_Handler(void)
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.

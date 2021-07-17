@@ -42,8 +42,8 @@
 #include "stm32f1xx_hal.h"
 #include "i2c.h"
 #define i2c_timeout 0xFF
-#define i2c_write(slaveAddr, regAddr, len, data) HAL_I2C_Mem_Write(&hi2c1, slaveAddr << 1, regAddr, 1, data, len, i2c_timeout)
-#define i2c_read(slaveAddr, regAddr, len, data) HAL_I2C_Mem_Read(&hi2c1, (slaveAddr << 1) + 1, regAddr, 1, data, len, i2c_timeout)
+#define i2c_write(slaveAddr, regAddr, len, data) HAL_I2C_Mem_Write(&hi2c2, slaveAddr << 1, regAddr, 1, data, len, i2c_timeout)
+#define i2c_read(slaveAddr, regAddr, len, data) HAL_I2C_Mem_Read(&hi2c2, (slaveAddr << 1) + 1, regAddr, 1, data, len, i2c_timeout)
 #define delay_ms HAL_Delay
 #define get_ms HAL_GetMs
 static inline void HAL_GetMs(unsigned long *timeStamp)
