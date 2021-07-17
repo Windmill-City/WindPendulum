@@ -59,7 +59,7 @@ void elog_port_deinit(void)
  */
 void elog_port_output(const char *log, size_t size)
 {
-    HAL_USART_Transmit(&huart1, log, size, 100);
+    HAL_UART_Transmit(&huart1, log, size, 100);
 }
 
 /**
@@ -85,7 +85,7 @@ void elog_port_output_unlock(void)
  */
 const char *elog_port_get_time(void)
 {
-    return "10:08:12";
+    return "";
 }
 
 /**
@@ -95,7 +95,7 @@ const char *elog_port_get_time(void)
  */
 const char *elog_port_get_p_info(void)
 {
-    return "pid:1008";
+    return "";
 }
 
 /**
@@ -105,5 +105,5 @@ const char *elog_port_get_p_info(void)
  */
 const char *elog_port_get_t_info(void)
 {
-    return "tid:24";
+    return "";
 }

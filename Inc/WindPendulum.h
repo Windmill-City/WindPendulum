@@ -14,7 +14,7 @@
 #define LOG_TAG "WindPendulum"
 
 //Q16 定点数转浮点数
-#define ToFloat(fixed) (float)(fixed * (1 / (1 << 16)))
+#define ToFloat(fixed, count) ((float)fixed / (float)pow(2, 30))
 
 /**
  * @brief 重力加速度
@@ -43,7 +43,7 @@ struct Attribute
     float accOmegaPhi;
 };
 
-struct Attribute fetchAttr()
+struct Attribute fetchAttr(struct MPU6050 data_)
 {
     long data[9];
     int8_t accuracy;
@@ -51,21 +51,24 @@ struct Attribute fetchAttr()
 
     struct Attribute attr;
 
-    inv_get_sensor_type_quat(data, &accuracy, (inv_time_t *)&timestamp);
+    auto q0 = ToFloat(data_.quat[0], 30);
+    auto q1 = ToFloat(data_.quat[1], 30);
+    auto q2 = ToFloat(data_.quat[2], 30);
+    auto q3 = ToFloat(data_.quat[3], 30);
 
     //欧拉角
     inv_get_sensor_type_euler(data, &accuracy, (inv_time_t *)&timestamp);
-    attr.euler.Pitch = ToFloat(data[0]);
-    attr.euler.Roll = ToFloat(data[1]);
-    attr.euler.Yaw = ToFloat(data[2]);
-    //角速度
-    inv_get_sensor_type_gyro(data, &accuracy, (inv_time_t *)&timestamp);
-    attr.omegaTheta = ToFloat(data[0]);
-    attr.omegaPhi = ToFloat(data[1]);
-    //角加速度
-    inv_get_sensor_type_accel(data, &accuracy, (inv_time_t *)&timestamp);
-    attr.accOmegaTheta = ToFloat(data[0]);
-    attr.accOmegaPhi = ToFloat(data[1]);
+
+    attr.euler.Pitch = asin(-2 * q1 * q3 + 2 * q0 * q2) * 57.3f;
+    attr.euler.Roll = atan2(2 * q2 * q3 + 2 * q0 * q1, -2 * q1 * q1 - 2 * q2 * q2 + 1) * 57.3f;
+    attr.euler.Yaw = atan2(2 * (q1 * q2 + q0 * q3), q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3) * 57.3f;
+
+    // attr.euler.Pitch = ToFloat(data[0], 16);
+    // attr.euler.Roll = ToFloat(data[1], 16);
+    // attr.euler.Yaw = ToFloat(data[2], 16);
+
+    log_i("Euler: %d %d %d", (int)(attr.euler.Pitch * 100), (int)(attr.euler.Roll*100), (int)(attr.euler.Yaw*100));
+
     return attr;
 }
 
@@ -134,7 +137,4 @@ void wind_pendulum_init()
     motorYZ.right.pwmGenerater.duty = &TIM1->CCR4;
 
     log_i("Initialize finished");
-
-    motor_ctl_update_duty(motorXZ, 16000, 1);
-    motor_ctl_update_duty(motorYZ, 16000, 1);
 }

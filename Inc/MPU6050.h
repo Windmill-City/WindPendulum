@@ -41,6 +41,12 @@ struct Euler
     float Pitch, Roll, Yaw;
 };
 
+struct MPU6050
+{
+    short gyro[3];
+    long accel[3], quat[4];
+};
+
 /**
  * @brief DMP 轻敲事件回调 Tap Callback
  * 
@@ -121,18 +127,21 @@ static inv_error_t mpl_init()
         MPL_LOGE("Could not initialize MPL.\n");
         return result;
     }
+    log_i("MPL initialied");
 
     /**
      * @brief 启用 MPL 库计算 6 轴四元数功能
      */
-    inv_enable_quaternion();
+    result = inv_enable_quaternion();
+    assert(!result);
 
     /**
      * @brief 启用 MPL 融合 6 + 3(磁场) 轴四元数功能
      * 
      * MPU6050 无磁场计
      */
-    //inv_enable_9x_sensor_fusion();
+    result = inv_enable_9x_sensor_fusion();
+    assert(!result);
 
     /**
      * @brief 启用 MPL 库磁场向量计算功能
@@ -156,17 +165,20 @@ static inv_error_t mpl_init()
      * inv_enable_motion_no_motion();
      * inv_set_no_motion_time(1000); 1000 <- 无运动时间
      */
-    inv_enable_fast_nomot();
+    result = inv_enable_fast_nomot();
+    assert(!result);
 
     /**
      * @brief 启用 MPL 在温度变化时校准陀螺仪功能
      */
-    inv_enable_gyro_tc();
+    result = inv_enable_gyro_tc();
+    assert(!result);
 
     /**
      * @brief 启用 eMPL-hal 读出 MPL 中欧拉角等数据功能
      */
-    inv_enable_eMPL_outputs();
+    result = inv_enable_eMPL_outputs();
+    assert(!result);
 
     /**
      * @brief 启动 MPL 计算
@@ -180,6 +192,7 @@ static inv_error_t mpl_init()
     {
         MPL_LOGE("Could not start the MPL.\n");
     }
+    assert(!result);
     return result;
 };
 
@@ -382,6 +395,9 @@ inv_error_t mpu6050_init(int sampleRate, bool useDMP)
      */
     mpu_set_sample_rate(sampleRate);
 
+    mpu_set_gyro_fsr(2000);
+    mpu_set_accel_fsr(2);
+
     /**
      * @brief 设定磁场计采样率, 单位 Hz
      * 
@@ -408,35 +424,41 @@ inv_error_t mpu6050_init(int sampleRate, bool useDMP)
     log_i("Initialize finished");
 }
 
-
+#include <stdlib.h>
+#include <string.h>
 
 /**
  * @brief 读取 FIFO 中的数据， 并送入 MPL
  * 
- * @param readTemp 是否更新温度数据
- * @return FIFO 中剩余的数据量
+ * @param more FIFO中剩余数据数量
+ * @return 是否有新数据
  */
-unsigned char fifo_read(bool *newData)
+bool fifo_read(unsigned char *more, struct MPU6050* data)
 {
+    bool newData = false;
+
     unsigned long sensor_timestamp;
-    short gyro[3], accel_short[3], sensors;
-    unsigned char more;
-    long accel[3], quat[4], temperature;
+    short accel_short[3], sensors;
+    long temperature;
 
     if (hal.dmp_on)
     {
-        dmp_read_fifo(gyro, accel_short, quat, &sensor_timestamp, &sensors, &more);
+        dmp_read_fifo(data->gyro, accel_short, data->quat, &sensor_timestamp, &sensors, more);
     }
     else
     {
-        mpu_read_fifo(gyro, accel_short, &sensor_timestamp, (unsigned char *)&sensors, &more);
+        mpu_read_fifo(data->gyro, accel_short, &sensor_timestamp, (unsigned char *)&sensors, more);
     }
+
+    log_v("FIFO has:%d data in", *more);
 
     if (sensors & INV_XYZ_GYRO)
     {
+        log_v("Receive Gyro:%d, %d, %d", data->gyro[0], data->gyro[1], data->gyro[2]);
+
         /* Push the new data to the MPL. */
-        inv_build_gyro(gyro, sensor_timestamp);
-        *newData = true;
+        inv_build_gyro(data->gyro, sensor_timestamp);
+        newData = true;
         if (HAL_GetTick() > hal.next_temp_ms)
         {
             hal.next_temp_ms = 500 + HAL_GetTick();
@@ -447,27 +469,19 @@ unsigned char fifo_read(bool *newData)
     }
     if (sensors & INV_XYZ_ACCEL)
     {
-        accel[0] = (long)accel_short[0];
-        accel[1] = (long)accel_short[1];
-        accel[2] = (long)accel_short[2];
-        inv_build_accel(accel, 0, sensor_timestamp);
-        *newData = true;
+        data->accel[0] = (long)accel_short[0];
+        data->accel[1] = (long)accel_short[1];
+        data->accel[2] = (long)accel_short[2];
+        log_v("Receive Accel:%d, %d, %d", data->accel[0], data->accel[1], data->accel[2]);
+        inv_build_accel(data->accel, 0, sensor_timestamp);
+        newData = true;
     }
     if (sensors & INV_WXYZ_QUAT)
     {
-        inv_build_quat(quat, 0, sensor_timestamp);
-        *newData = true;
+        log_v("Receive Quat:%d, %d, %d, %d", data->quat[0], data->quat[1], data->quat[2], data->quat[3]);
+        inv_build_quat(data->quat, 0, sensor_timestamp);
+        newData = true;
     }
-
-    return more;
-}
-
-bool read_mpl()
-{
-    bool newData = false;
-
-    while (!fifo_read(&newData))
-        ;
 
     if (newData)
     {
