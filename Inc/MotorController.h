@@ -36,14 +36,14 @@ void motor_ctl_update_energy(struct MotorController *motor_ctl, Energy energy, f
 
     if (signbit(energy) ^ signbit(omega))
     {
-        log_i("[%d]顺时针用力");
-        motor_doOp(&motor_ctl->left, Backward, duty);
-        motor_doOp(&motor_ctl->right, Forward, duty);
-    }
-    else
-    {
         log_i("[%d]逆时针用力");
         motor_doOp(&motor_ctl->left, Forward, duty);
         motor_doOp(&motor_ctl->right, Backward, duty);
+    }
+    else
+    {
+        log_i("[%d]顺时针用力");
+        motor_doOp(&motor_ctl->left, Backward, duty);
+        motor_doOp(&motor_ctl->right, Forward, duty);
     }
 }
