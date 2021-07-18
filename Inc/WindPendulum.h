@@ -91,8 +91,8 @@ void load_straight_line_pid()
     pid_reset_all(&pidXZ);
     pid_reset_all(&pidYZ);
 
-    struct PIDParam pXZ = {2000, 0, 0, 500};
-    struct PIDParam pYZ = {2000, 0, 0, 500};
+    struct PIDParam pXZ = {5000, 0, 0, 500};
+    struct PIDParam pYZ = {5000, 0, 0, 500};
 
     pidXZ.param = pXZ;
     pidYZ.param = pYZ;
@@ -151,18 +151,20 @@ void wind_pendulum_init()
     load_straight_line_pid();
 }
 
-#define ToRad(x) (x / 57.3)
+#define ToRad(x) (x / 57.3f)
+#define ToAngle(x) (x * 57.3f)
 
 /**
  * @brief 根据时间计算理想状态下摆角
  * 
+ * @param 最大摆角, 角度
  * @param time 时间, 毫秒
  * @param phase 相位差, 弧度
- * @return float 摆角, 弧度
+ * @return float 摆角, 角度
  */
-float getAngleByTime(uint32_t time, float phase)
+float getAngleByTime(float maxAngle, uint32_t time, float phase)
 {
-    return cos(sqrt(g / R) * time / 1000.0f + phase);
+    return ToAngle(ToRad(maxAngle) * cos(sqrt(g / R) * time / 1000.0f + phase));
 }
 
 /**
@@ -186,10 +188,16 @@ void update_loop()
     {
         struct Attribute attr = fetchAttr(data);
 
-        float expectAngle = getAngleByTime(HAL_GetTick(), 0);
+        float expectAngle = getAngleByTime(30, HAL_GetTick(), ToAngle(90));
+        float expectOmega = expectAngle > 0 ? getOmegaByAngle(30, expectAngle) : -getOmegaByAngle(30, expectAngle);
+
         float errAngle = expectAngle - attr.euler.Roll;
+        float errOmega = expectOmega - attr.omegaTheta;
+
         log_i("Angle Current:%f Expect:%f, Err:%f", attr.euler.Roll, expectAngle, errAngle);
-        float energy = pid_push_new_err(&pidXZ, errAngle);
+        log_i("Omega Current:%f Expect:%f, Err:%f", attr.omegaTheta, expectOmega, errOmega);
+
+        float energy = pid_push_new_err(&pidXZ, errOmega);
         motor_ctl_update_energy(&motorXZ, energy, attr.omegaTheta);
     }
     HAL_Delay(10);
