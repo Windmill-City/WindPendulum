@@ -151,34 +151,45 @@ void wind_pendulum_init()
     load_straight_line_pid();
 }
 
+#define PI acos(-1)
+
 #define ToRad(x) (x / 57.3f)
 #define ToAngle(x) (x * 57.3f)
 
 /**
+ * @brief 单摆运动周期
+ */
+#define T (2 * PI * sqrt(R / g))
+
+/**
+ * @brief 单摆运动角频率
+ */
+#define Omega (2 * PI / T)
+
+/**
  * @brief 根据时间计算理想状态下摆角
  * 
- * @param 最大摆角, 角度
  * @param time 时间, 毫秒
+ * @param maxAngle 最大摆角, 角度
  * @param phase 相位差, 弧度
  * @return float 摆角, 角度
  */
-float getAngleByTime(float maxAngle, uint32_t time, float phase)
+float getAngleByTime(uint32_t time, float maxAngle, float phase)
 {
-    return ToAngle(ToRad(maxAngle) * cos(sqrt(g / R) * time / 1000.0f + phase));
+    return ToAngle(ToRad(maxAngle) * cos(Omega * time / 1000.0f + phase));
 }
 
 /**
- * @brief 通过摆杆当前角度算理想单摆当前角度下的角速度
+ * @brief 通过时间算理想角速度
  * 
- * @param angle 摆杆当前角度
- * @param phi 最大摆角
- * @param gravity 重力加速度
- * @param radius 摆杆长度
- * @return double 理想状态角速度
+ * @param time 时间, 毫秒
+ * @param maxAngle 最大摆角
+ * @param phase 相位差, 弧度
+ * @return float 理想状态角速度
  */
-float getOmegaByAngle(float angle, float phi)
+float getOmegaByTime(uint32_t time, float maxAngle, float phase)
 {
-    return sqrt(2 * g * (cos(ToRad(phi)) - cos(ToRad(angle))) / R);
+    return -ToRad(maxAngle) * Omega * sin(Omega * time / 1000.0f + phase);
 }
 
 void update_loop()
@@ -188,11 +199,13 @@ void update_loop()
     {
         struct Attribute attr = fetchAttr(data);
 
-        float expectAngle = getAngleByTime(30, HAL_GetTick(), ToAngle(90));
-        float expectOmega = expectAngle > 0 ? getOmegaByAngle(30, expectAngle) : -getOmegaByAngle(30, expectAngle);
+        float expectAngle = getAngleByTime(HAL_GetTick(), 30, 0);
+        float expectOmega = getOmegaByTime(HAL_GetTick(), 30, 0) * 10;
 
         float errAngle = expectAngle - attr.euler.Roll;
-        float errOmega = expectOmega - attr.omegaTheta;
+        float errOmega = attr.omegaTheta - expectOmega;
+
+        log_i("Tick:%d", HAL_GetTick());
 
         log_i("Angle Current:%f Expect:%f, Err:%f", attr.euler.Roll, expectAngle, errAngle);
         log_i("Omega Current:%f Expect:%f, Err:%f", attr.omegaTheta, expectOmega, errOmega);

@@ -45,13 +45,13 @@ struct Motor
  * @param port2 IN2_Port
  * @param pin2 IN2_Pin
  */
-void set_motor_mode(struct Motor motor, MotorMode mode)
+void set_motor_mode(struct Motor *motor, MotorMode mode)
 {
-    log_i("[%d]Set Mode: Old Mode:%d, New Mode:%d", motor.Id, motor.mode, mode);
-    GPIO_TypeDef *port1 = motor.Port_IN1;
-    uint16_t pin1 = motor.Pin_IN1;
-    GPIO_TypeDef *port2 = motor.Port_IN2;
-    uint16_t pin2 = motor.Pin_IN2;
+    log_i("[%d]Set Mode: Old Mode:%d, New Mode:%d", motor->Id, motor->mode, mode);
+    GPIO_TypeDef *port1 = motor->Port_IN1;
+    uint16_t pin1 = motor->Pin_IN1;
+    GPIO_TypeDef *port2 = motor->Port_IN2;
+    uint16_t pin2 = motor->Pin_IN2;
 
     switch (mode)
     {
@@ -81,9 +81,9 @@ void set_motor_mode(struct Motor motor, MotorMode mode)
  * @param mode 正反转\刹车\自由转动
  * @param duty 电机 PWM 占空比
  */
-void motor_doOp(struct Motor motor, MotorMode mode, Duty duty)
+void motor_doOp(struct Motor *motor, MotorMode mode, Duty duty)
 {
-    log_i("[%d]Do operation: Mode:%d Duty:%d", motor.Id, mode, duty);
+    log_i("[%d]Do operation: Mode:%d Duty:%d", motor->Id, mode, duty);
     set_motor_mode(motor, mode);
-    set_pwm_duty(motor.pwmGenerater, duty);
+    set_pwm_duty(motor->pwmGenerater, duty);
 }
