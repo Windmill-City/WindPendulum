@@ -44,7 +44,7 @@ struct Attribute
     float accOmegaPhi;
 };
 
-struct Attribute fetchAttr(struct MPU6050 data_)
+struct Attribute fetchAttr()
 {
     long data[9];
     int8_t accuracy;
@@ -63,12 +63,14 @@ struct Attribute fetchAttr(struct MPU6050 data_)
 
     //角速度
     inv_get_sensor_type_gyro(data, &accuracy, (inv_time_t *)&timestamp);
+
     attr.omegaTheta = ToFloat(data[0], 16);
     attr.omegaPhi = ToFloat(data[1], 16);
 
     log_i("Omega: %f %f %f", attr.omegaTheta, attr.omegaPhi, ToFloat(data[2], 16));
     //角加速度
     inv_get_sensor_type_accel(data, &accuracy, (inv_time_t *)&timestamp);
+
     attr.accOmegaTheta = ToFloat(data[0], 16);
     attr.accOmegaPhi = ToFloat(data[1], 16);
 
@@ -91,8 +93,8 @@ void load_straight_line_pid()
     pid_reset_all(&pidXZ);
     pid_reset_all(&pidYZ);
 
-    struct PIDParam pXZ = {5000, 0, 0, 500};
-    struct PIDParam pYZ = {5000, 0, 0, 500};
+    struct PIDParam pXZ = {24000, 500, 2500, 0};
+    struct PIDParam pYZ = {24000, 500, 2500, 0};
 
     pidXZ.param = pXZ;
     pidYZ.param = pYZ;
@@ -103,10 +105,9 @@ void load_straight_line_pid()
  */
 void wind_pendulum_init()
 {
-    log_i("Begin init");
-    mpu6050_init(20, true);
+    HAL_Delay(50);
 
-    HAL_Delay(5000);
+    mpu6050_init(8, true);
 
     //XZ平面
     motorXZ.Id = 1;
@@ -146,8 +147,6 @@ void wind_pendulum_init()
 
     pidXZ.Id = 1;
     pidYZ.Id = 2;
-
-    log_i("Initialize finished");
     load_straight_line_pid();
 }
 
@@ -192,26 +191,35 @@ float getOmegaByTime(uint32_t time, float maxAngle, float phase)
     return -ToRad(maxAngle) * Omega * sin(Omega * time / 1000.0f + phase);
 }
 
-void update_loop()
+void update_motor_state()
 {
-    struct MPU6050 data;
-    if (fifo_read(&data))
-    {
-        struct Attribute attr = fetchAttr(data);
+    struct Attribute attr = fetchAttr();
 
-        float expectAngle = getAngleByTime(HAL_GetTick(), 30, 0);
-        float expectOmega = getOmegaByTime(HAL_GetTick(), 30, 0) * 10;
+    float expectAngleXZ = getAngleByTime(HAL_GetTick(), 0, 0);
+    float expectOmegaXZ = getOmegaByTime(HAL_GetTick(), 0, 0) * 10;
 
-        float errAngle = expectAngle - attr.euler.Roll;
-        float errOmega = attr.omegaTheta - expectOmega;
+    float errAngleXZ = expectAngleXZ - attr.euler.Roll;
+    float errOmegaXZ = attr.omegaTheta - expectOmegaXZ;
 
-        log_i("Tick:%d", HAL_GetTick());
+    log_i("Tick:%d", HAL_GetTick());
 
-        log_i("Angle Current:%f Expect:%f, Err:%f", attr.euler.Roll, expectAngle, errAngle);
-        log_i("Omega Current:%f Expect:%f, Err:%f", attr.omegaTheta, expectOmega, errOmega);
+    log_i("Angle Current:%f Expect:%f, Err:%f", attr.euler.Roll, expectAngleXZ, errAngleXZ);
+    log_i("Omega Current:%f Expect:%f, Err:%f", attr.omegaTheta, expectOmegaXZ, errOmegaXZ);
 
-        float energy = pid_push_new_err(&pidXZ, errOmega);
-        motor_ctl_update_energy(&motorXZ, energy, attr.omegaTheta);
-    }
-    HAL_Delay(10);
+    float energyXZ = pid_push_new_err(&pidXZ, errAngleXZ);
+    motor_ctl_update_energy(&motorXZ, energyXZ, attr.omegaTheta);
+
+    float expectAngleYZ = getAngleByTime(HAL_GetTick(), 0, 0);
+    float expectOmegaYZ = getOmegaByTime(HAL_GetTick(), 0, 0) * 10;
+
+    float errAngleYZ = expectAngleYZ - attr.euler.Pitch;
+    float errOmegaYZ = attr.omegaTheta - expectOmegaYZ;
+
+    log_i("Tick:%d", HAL_GetTick());
+
+    log_i("Angle Current:%f Expect:%f, Err:%f", attr.euler.Pitch, expectAngleYZ, errAngleYZ);
+    log_i("Omega Current:%f Expect:%f, Err:%f", attr.omegaPhi, expectOmegaYZ, errOmegaYZ);
+
+    float energyYZ = pid_push_new_err(&pidYZ, errAngleYZ);
+    motor_ctl_update_energy(&motorYZ, energyYZ, attr.omegaPhi);
 }

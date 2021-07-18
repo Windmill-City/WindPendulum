@@ -41,12 +41,6 @@ struct Euler
     float Pitch, Roll, Yaw;
 };
 
-struct MPU6050
-{
-    short gyro[3];
-    long accel[3], quat[4];
-};
-
 /**
  * @brief DMP 轻敲事件回调 Tap Callback
  * 
@@ -125,15 +119,12 @@ static inv_error_t mpl_init()
     if (result)
     {
         MPL_LOGE("Could not initialize MPL.\n");
-        return result;
     }
-    log_i("MPL initialied");
 
     /**
      * @brief 启用 MPL 库计算 6 轴四元数功能
      */
     result = inv_enable_quaternion();
-    assert(!result);
 
     /**
      * @brief 启用 MPL 融合 6 + 3(磁场) 轴四元数功能
@@ -141,7 +132,6 @@ static inv_error_t mpl_init()
      * MPU6050 无磁场计
      */
     //result = inv_enable_9x_sensor_fusion();
-    //assert(!result);
 
     /**
      * @brief 启用 MPL 库磁场向量计算功能
@@ -166,19 +156,16 @@ static inv_error_t mpl_init()
      * inv_set_no_motion_time(1000); 1000 <- 无运动时间
      */
     result = inv_enable_fast_nomot();
-    assert(!result);
 
     /**
      * @brief 启用 MPL 在温度变化时校准陀螺仪功能
      */
     result = inv_enable_gyro_tc();
-    assert(!result);
 
     /**
      * @brief 启用 eMPL-hal 读出 MPL 中欧拉角等数据功能
      */
     result = inv_enable_eMPL_outputs();
-    assert(!result);
 
     /**
      * @brief 启动 MPL 计算
@@ -192,7 +179,6 @@ static inv_error_t mpl_init()
     {
         MPL_LOGE("Could not start the MPL.\n");
     }
-    assert(!result);
     return result;
 };
 
@@ -412,7 +398,7 @@ void mpu_return_zero()
  */
 inv_error_t mpu6050_init(int sampleRate, bool useDMP)
 {
-    log_i("Begin init");
+    log_i("Begin initialize MPU6050");
     inv_error_t result;
 
     /**
@@ -482,7 +468,6 @@ inv_error_t mpu6050_init(int sampleRate, bool useDMP)
     {
         dmp_init(sampleRate);
     }
-    log_i("Initialize finished");
 
     return result;
 }
@@ -493,64 +478,64 @@ inv_error_t mpu6050_init(int sampleRate, bool useDMP)
 /**
  * @brief 读取 FIFO 中的数据， 并送入 MPL
  * 
- * @return 是否有新数据
+ * @param newData 是否有新数据
+ * @return FIFO中剩余数据量
  */
-bool fifo_read(struct MPU6050 *data)
+unsigned char fifo_read(bool *newData)
 {
-    bool newData = false;
     unsigned char more;
+
+    short gyro[3];
+    long accel[3], quat[4];
 
     unsigned long sensor_timestamp;
     short accel_short[3], sensors;
     long temperature;
 
-    do
+    if (hal.dmp_on)
     {
-        if (hal.dmp_on)
-        {
-            dmp_read_fifo(data->gyro, accel_short, data->quat, &sensor_timestamp, &sensors, &more);
-        }
-        else
-        {
-            mpu_read_fifo(data->gyro, accel_short, &sensor_timestamp, (unsigned char *)&sensors, &more);
-        }
+        dmp_read_fifo(gyro, accel_short, quat, &sensor_timestamp, &sensors, &more);
+    }
+    else
+    {
+        mpu_read_fifo(gyro, accel_short, &sensor_timestamp, (unsigned char *)&sensors, &more);
+    }
 
-        if (sensors & INV_XYZ_GYRO)
-        {
-            log_v("Receive Gyro:%d, %d, %d", data->gyro[0], data->gyro[1], data->gyro[2]);
+    if (sensors & INV_XYZ_GYRO)
+    {
+        log_v("Receive Gyro:%d, %d, %d", gyro[0], gyro[1], gyro[2]);
 
-            /* Push the new data to the MPL. */
-            inv_build_gyro(data->gyro, sensor_timestamp);
-            newData = true;
-            if (HAL_GetTick() > hal.next_temp_ms)
-            {
-                hal.next_temp_ms = 500 + HAL_GetTick();
-                /* Temperature only used for gyro temp comp. */
-                mpu_get_temperature(&temperature, &sensor_timestamp);
-                inv_build_temp(temperature, sensor_timestamp);
-            }
-        }
-        if (sensors & INV_XYZ_ACCEL)
+        /* Push the new data to the MPL. */
+        inv_build_gyro(gyro, sensor_timestamp);
+        *newData = true;
+        if (HAL_GetTick() > hal.next_temp_ms)
         {
-            data->accel[0] = (long)accel_short[0];
-            data->accel[1] = (long)accel_short[1];
-            data->accel[2] = (long)accel_short[2];
-            log_v("Receive Accel:%d, %d, %d", data->accel[0], data->accel[1], data->accel[2]);
-            inv_build_accel(data->accel, 0, sensor_timestamp);
-            newData = true;
+            hal.next_temp_ms = 500 + HAL_GetTick();
+            /* Temperature only used for gyro temp comp. */
+            mpu_get_temperature(&temperature, &sensor_timestamp);
+            inv_build_temp(temperature, sensor_timestamp);
         }
-        if (sensors & INV_WXYZ_QUAT)
-        {
-            log_v("Receive Quat:%d, %d, %d, %d", data->quat[0], data->quat[1], data->quat[2], data->quat[3]);
-            inv_build_quat(data->quat, 0, sensor_timestamp);
-            newData = true;
-        }
-    } while (more);
+    }
+    if (sensors & INV_XYZ_ACCEL)
+    {
+        accel[0] = (long)accel_short[0];
+        accel[1] = (long)accel_short[1];
+        accel[2] = (long)accel_short[2];
+        log_v("Receive Accel:%d, %d, %d", accel[0], accel[1], accel[2]);
+        inv_build_accel(accel, 0, sensor_timestamp);
+        *newData = true;
+    }
+    if (sensors & INV_WXYZ_QUAT)
+    {
+        log_v("Receive Quat:%d, %d, %d, %d", quat[0], quat[1], quat[2], quat[3]);
+        inv_build_quat(quat, 0, sensor_timestamp);
+        *newData = true;
+    }
 
-    if (newData)
+    if (*newData)
     {
         inv_execute_on_data();
     }
 
-    return newData;
+    return more;
 }

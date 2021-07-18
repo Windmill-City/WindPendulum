@@ -34,6 +34,9 @@ void motor_ctl_update_energy(struct MotorController *motor_ctl, Energy energy, f
     log_i("[%d]Update Energy:%f, Omega:%f", motor_ctl->Id, energy, omega);
     int duty = (Duty)abs(energy);
 
+    if (omega == 0)
+        return;
+
     if (signbit(energy) ^ signbit(omega))
     {
         log_i("[%d]逆时针用力");
