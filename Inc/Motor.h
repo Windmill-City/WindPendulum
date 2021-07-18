@@ -48,6 +48,9 @@ struct Motor
 void set_motor_mode(struct Motor *motor, MotorMode mode)
 {
     log_i("[%d]Set Mode: Old Mode:%d, New Mode:%d", motor->Id, motor->mode, mode);
+
+    motor->mode = mode;
+
     GPIO_TypeDef *port1 = motor->Port_IN1;
     uint16_t pin1 = motor->Pin_IN1;
     GPIO_TypeDef *port2 = motor->Port_IN2;
