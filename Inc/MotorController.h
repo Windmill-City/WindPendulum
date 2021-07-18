@@ -38,7 +38,7 @@ void motor_ctl_update_energy(struct MotorController *motor_ctl, Energy energy, f
     {
         //顺时针加速
         log_i("[%d]顺时针用力");
-        motor_doOp(motor_ctl->left, Backward, duty);
+        motor_doOp(motor_ctl->left, Brake, duty);
         motor_doOp(motor_ctl->right, Forward, duty);
     }
     else
@@ -46,6 +46,6 @@ void motor_ctl_update_energy(struct MotorController *motor_ctl, Energy energy, f
         //逆时针加速
         log_i("[%d]逆时针用力");
         motor_doOp(motor_ctl->left, Forward, duty);
-        motor_doOp(motor_ctl->right, Backward, duty);
+        motor_doOp(motor_ctl->right, Brake, duty);
     }
 }
