@@ -29,6 +29,10 @@
 #include "stm32f1xx.h"
 #include "usart.h"
 
+#if !defined(LOG_TAG)
+#define LOG_TAG "MPL"
+#endif
+
 #include <elog.h>
 
 #define BUF_SIZE (256)

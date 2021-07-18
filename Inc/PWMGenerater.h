@@ -1,7 +1,7 @@
-#include <elog.h>
 #include "tim.h"
 
-#define LOG_TAG "PWM Generater"
+#define LOG_TAG "PWMGenerater"
+#include <elog.h>
 
 typedef volatile uint32_t Duty;
 
@@ -29,6 +29,6 @@ struct PWMGenerater
  */
 void set_pwm_duty(struct PWMGenerater pwm, Duty duty)
 {
-    log_i("[%d]Old Duty:%d, New Duty:%d", pwm.Id, pwm.duty, duty);
+    log_i("[%d]Old Duty:%d, New Duty:%d", pwm.Id, *pwm.duty, duty);
     *pwm.duty = duty;
 }

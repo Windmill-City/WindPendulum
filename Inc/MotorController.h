@@ -1,8 +1,9 @@
 #include <stdlib.h>
-#include <elog.h>
 #include "Motor.h"
 
 #define LOG_TAG "MotorController"
+
+#include <elog.h>
 
 typedef float Energy;
 
@@ -28,22 +29,23 @@ struct MotorController
  * @param energy 动能差，+ 代表增加动能 - 代表减少动能
  * @param omega 当前速度
  */
-void motor_ctl_update_duty(struct MotorController motor_ctl, Energy energy, double omega)
+void motor_ctl_update_energy(struct MotorController *motor_ctl, Energy energy, float omega)
 {
-    log_i("[%d]Update Duty: Energy:%f, Omega:%f", motor_ctl.Id, energy, omega);
-    auto duty = (Duty)abs(energy);
-    if (signbit(omega) ^ signbit(energy))
+    log_i("[%d]Update Energy:%f, Omega:%f", motor_ctl->Id, energy, omega);
+    int duty = (Duty)abs(energy);
+
+    if (signbit(energy) ^ signbit(omega))
     {
         //顺时针加速
-        log_i("[%d]顺时针加速");
-        motor_doOp(motor_ctl.left, Backward, duty);
-        motor_doOp(motor_ctl.right, Forward, duty);
+        log_i("[%d]顺时针用力");
+        motor_doOp(motor_ctl->left, Backward, duty);
+        motor_doOp(motor_ctl->right, Forward, duty);
     }
     else
     {
         //逆时针加速
-        log_i("[%d]逆时针加速");
-        motor_doOp(motor_ctl.left, Forward, duty);
-        motor_doOp(motor_ctl.right, Backward, duty);
+        log_i("[%d]逆时针用力");
+        motor_doOp(motor_ctl->left, Forward, duty);
+        motor_doOp(motor_ctl->right, Backward, duty);
     }
 }

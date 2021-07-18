@@ -1,4 +1,3 @@
-#include <elog.h>
 #include "inv_mpu.h"
 #include "inv_mpu_dmp_motion_driver.h"
 #include "invensense.h"
@@ -6,6 +5,7 @@
 #include "eMPL_outputs.h"
 
 #define LOG_TAG "MPU6050"
+#include <elog.h>
 
 unsigned char *mpl_key = (unsigned char *)"eMPL 5.1";
 
@@ -140,8 +140,8 @@ static inv_error_t mpl_init()
      * 
      * MPU6050 无磁场计
      */
-    result = inv_enable_9x_sensor_fusion();
-    assert(!result);
+    //result = inv_enable_9x_sensor_fusion();
+    //assert(!result);
 
     /**
      * @brief 启用 MPL 库磁场向量计算功能
@@ -212,9 +212,9 @@ struct platform_data_s
  * @brief 旋转矩阵, 根据你的 MPU 在设备中方位来设定
  */
 static struct platform_data_s gyro_pdata = {
-    .orientation = {0, 1, 0,
-                    0, 0, 1,
-                    1, 0, 0}};
+    .orientation = {1, 0, 0,
+                    0, 1, 0,
+                    0, 0, 1}};
 
 /**
  * @brief 配置 MPL参数
@@ -345,6 +345,65 @@ void dmp_init(int sampleRate)
 }
 
 /**
+ * @brief MPU 归零
+ */
+void mpu_return_zero()
+{
+    int result;
+    long gyro[3], accel[3];
+
+    result = mpu_run_self_test(gyro, accel);
+
+    if (result == 0x5)
+    {
+        MPL_LOGI("Passed!\n");
+        MPL_LOGI("accel: %7.4f %7.4f %7.4f\n",
+                 accel[0] / 65536.f,
+                 accel[1] / 65536.f,
+                 accel[2] / 65536.f);
+        MPL_LOGI("gyro: %7.4f %7.4f %7.4f\n",
+                 gyro[0] / 65536.f,
+                 gyro[1] / 65536.f,
+                 gyro[2] / 65536.f);
+
+        /* Push the calibrated data to the MPL library.
+         *
+         * MPL expects biases in hardware units << 16, but self test returns
+		 * biases in g's << 16.
+		 */
+        unsigned short accel_sens;
+        float gyro_sens;
+
+        mpu_get_accel_sens(&accel_sens);
+        accel[0] *= accel_sens;
+        accel[1] *= accel_sens;
+        accel[2] *= accel_sens;
+        inv_set_accel_bias(accel, 3);
+        dmp_set_accel_bias(accel);
+        mpu_get_gyro_sens(&gyro_sens);
+        gyro[0] = (long)(gyro[0] * gyro_sens);
+        gyro[1] = (long)(gyro[1] * gyro_sens);
+        gyro[2] = (long)(gyro[2] * gyro_sens);
+        inv_set_gyro_bias(gyro, 3);
+        dmp_set_gyro_bias(gyro);
+    }
+    else
+    {
+        if (!(result & 0x1))
+            MPL_LOGE("Gyro failed.\n");
+        if (!(result & 0x2))
+            MPL_LOGE("Accel failed.\n");
+        if (!(result & 0x4))
+            MPL_LOGE("Compass failed.\n");
+    }
+
+    /* Let MPL know that contiguity was broken. */
+    inv_accel_was_turned_off();
+    inv_gyro_was_turned_off();
+    inv_compass_was_turned_off();
+}
+
+/**
  * @brief 初始化 MPU6050
  * 
  * @param sampleRate 采样率
@@ -417,65 +476,15 @@ inv_error_t mpu6050_init(int sampleRate, bool useDMP)
     hal.next_compass_ms = 0;
     hal.next_temp_ms = 0;
 
+    mpu_return_zero();
+
     if (useDMP)
     {
         dmp_init(sampleRate);
     }
     log_i("Initialize finished");
-}
 
-void mpu_6050_run_self_test()
-{
-    int result;
-    long gyro[3], accel[3];
-
-    result = mpu_run_self_test(gyro, accel);
-
-    if (result == 0x7)
-    {
-        MPL_LOGI("Passed!\n");
-        MPL_LOGI("accel: %7.4f %7.4f %7.4f\n",
-                 accel[0] / 65536.f,
-                 accel[1] / 65536.f,
-                 accel[2] / 65536.f);
-        MPL_LOGI("gyro: %7.4f %7.4f %7.4f\n",
-                 gyro[0] / 65536.f,
-                 gyro[1] / 65536.f,
-                 gyro[2] / 65536.f);
-
-        /* Push the calibrated data to the MPL library.
-         *
-         * MPL expects biases in hardware units << 16, but self test returns
-		 * biases in g's << 16.
-		 */
-        unsigned short accel_sens;
-        float gyro_sens;
-
-        mpu_get_accel_sens(&accel_sens);
-        accel[0] *= accel_sens;
-        accel[1] *= accel_sens;
-        accel[2] *= accel_sens;
-        inv_set_accel_bias(accel, 3);
-        mpu_get_gyro_sens(&gyro_sens);
-        gyro[0] = (long)(gyro[0] * gyro_sens);
-        gyro[1] = (long)(gyro[1] * gyro_sens);
-        gyro[2] = (long)(gyro[2] * gyro_sens);
-        inv_set_gyro_bias(gyro, 3);
-    }
-    else
-    {
-        if (!(result & 0x1))
-            MPL_LOGE("Gyro failed.\n");
-        if (!(result & 0x2))
-            MPL_LOGE("Accel failed.\n");
-        if (!(result & 0x4))
-            MPL_LOGE("Compass failed.\n");
-    }
-
-    /* Let MPL know that contiguity was broken. */
-    inv_accel_was_turned_off();
-    inv_gyro_was_turned_off();
-    inv_compass_was_turned_off();
+    return result;
 }
 
 #include <stdlib.h>
@@ -484,58 +493,59 @@ void mpu_6050_run_self_test()
 /**
  * @brief 读取 FIFO 中的数据， 并送入 MPL
  * 
- * @param more FIFO中剩余数据数量
  * @return 是否有新数据
  */
-bool fifo_read(unsigned char *more, struct MPU6050 *data)
+bool fifo_read(struct MPU6050 *data)
 {
     bool newData = false;
+    unsigned char more;
 
     unsigned long sensor_timestamp;
     short accel_short[3], sensors;
     long temperature;
 
-    if (hal.dmp_on)
+    do
     {
-        dmp_read_fifo(data->gyro, accel_short, data->quat, &sensor_timestamp, &sensors, more);
-    }
-    else
-    {
-        mpu_read_fifo(data->gyro, accel_short, &sensor_timestamp, (unsigned char *)&sensors, more);
-    }
-
-    log_v("FIFO has:%d data in", *more);
-
-    if (sensors & INV_XYZ_GYRO)
-    {
-        log_v("Receive Gyro:%d, %d, %d", data->gyro[0], data->gyro[1], data->gyro[2]);
-
-        /* Push the new data to the MPL. */
-        inv_build_gyro(data->gyro, sensor_timestamp);
-        newData = true;
-        if (HAL_GetTick() > hal.next_temp_ms)
+        if (hal.dmp_on)
         {
-            hal.next_temp_ms = 500 + HAL_GetTick();
-            /* Temperature only used for gyro temp comp. */
-            mpu_get_temperature(&temperature, &sensor_timestamp);
-            inv_build_temp(temperature, sensor_timestamp);
+            dmp_read_fifo(data->gyro, accel_short, data->quat, &sensor_timestamp, &sensors, &more);
         }
-    }
-    if (sensors & INV_XYZ_ACCEL)
-    {
-        data->accel[0] = (long)accel_short[0];
-        data->accel[1] = (long)accel_short[1];
-        data->accel[2] = (long)accel_short[2];
-        log_v("Receive Accel:%d, %d, %d", data->accel[0], data->accel[1], data->accel[2]);
-        inv_build_accel(data->accel, 0, sensor_timestamp);
-        newData = true;
-    }
-    if (sensors & INV_WXYZ_QUAT)
-    {
-        log_v("Receive Quat:%d, %d, %d, %d", data->quat[0], data->quat[1], data->quat[2], data->quat[3]);
-        inv_build_quat(data->quat, 0, sensor_timestamp);
-        newData = true;
-    }
+        else
+        {
+            mpu_read_fifo(data->gyro, accel_short, &sensor_timestamp, (unsigned char *)&sensors, &more);
+        }
+
+        if (sensors & INV_XYZ_GYRO)
+        {
+            log_v("Receive Gyro:%d, %d, %d", data->gyro[0], data->gyro[1], data->gyro[2]);
+
+            /* Push the new data to the MPL. */
+            inv_build_gyro(data->gyro, sensor_timestamp);
+            newData = true;
+            if (HAL_GetTick() > hal.next_temp_ms)
+            {
+                hal.next_temp_ms = 500 + HAL_GetTick();
+                /* Temperature only used for gyro temp comp. */
+                mpu_get_temperature(&temperature, &sensor_timestamp);
+                inv_build_temp(temperature, sensor_timestamp);
+            }
+        }
+        if (sensors & INV_XYZ_ACCEL)
+        {
+            data->accel[0] = (long)accel_short[0];
+            data->accel[1] = (long)accel_short[1];
+            data->accel[2] = (long)accel_short[2];
+            log_v("Receive Accel:%d, %d, %d", data->accel[0], data->accel[1], data->accel[2]);
+            inv_build_accel(data->accel, 0, sensor_timestamp);
+            newData = true;
+        }
+        if (sensors & INV_WXYZ_QUAT)
+        {
+            log_v("Receive Quat:%d, %d, %d, %d", data->quat[0], data->quat[1], data->quat[2], data->quat[3]);
+            inv_build_quat(data->quat, 0, sensor_timestamp);
+            newData = true;
+        }
+    } while (more);
 
     if (newData)
     {

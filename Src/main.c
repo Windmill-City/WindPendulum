@@ -116,6 +116,7 @@ int main(void)
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -125,13 +126,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    unsigned char more;
-    struct MPU6050 data;
-    if (fifo_read(&more, &data))
-    {
-      fetchAttr(data);
-    }
-    HAL_Delay(10);
+    update_loop();
   }
   /* USER CODE END 3 */
 }

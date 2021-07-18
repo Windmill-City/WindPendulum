@@ -16,6 +16,12 @@
         "array": "cpp",
         "string": "cpp",
         "string_view": "cpp",
-        "pwmgenerater.hpp": "c"
+        "pwmgenerater.hpp": "c",
+        "limits": "cpp",
+        "streambuf": "cpp",
+        "*.tcc": "cpp",
+        "type_traits": "cpp",
+        "elog.h": "c",
+        "elog_cfg.h": "c"
     }
 }
