@@ -481,9 +481,9 @@ inv_error_t mpu6050_init(int sampleRate, bool useDMP)
  * @param newData 是否有新数据
  * @return FIFO中剩余数据量
  */
-unsigned char fifo_read(bool *newData)
+uint8_t fifo_read(bool *newData)
 {
-    unsigned char more;
+    uint8_t more;
 
     short gyro[3];
     long accel[3], quat[4];

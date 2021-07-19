@@ -135,7 +135,6 @@ int main(void)
     if (newData)
     {
       update_motor_state();
-      HAL_Delay(2);
     }
   }
   /* USER CODE END 3 */

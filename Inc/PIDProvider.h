@@ -8,14 +8,14 @@
 /**
  * @brief PID 参数
  */
-struct PIDParam
+typedef struct PIDParam
 {
     float P;
     float I;
     float D;
     float maxIntegral;
-};
-struct PIDProvider
+}PIDParam_t, *pPIDParam;
+typedef struct PIDProvider
 {
     /**
      * @brief 唯一识别 Id
@@ -35,9 +35,9 @@ struct PIDProvider
      * @brief 误差微分值
      */
     float diff;
-};
+}PIDProvider_t, *pPIDProvider;
 
-float pid_push_new_err(struct PIDProvider* provider, float new_err)
+float pid_push_new_err(pPIDProvider provider, float new_err)
 {
     provider->integral += new_err;
     
@@ -49,7 +49,7 @@ float pid_push_new_err(struct PIDProvider* provider, float new_err)
     return provider->param.P * new_err + provider->param.I * provider->integral + provider->param.D * provider->diff;
 }
 
-void pid_reset_all(struct PIDProvider* provider)
+void pid_reset_all(pPIDProvider provider)
 {
     provider->integral = 0;
     provider->diff = 0;
