@@ -93,9 +93,6 @@ extern uint8_t gAddressFilter = 0;
  */
 void send_packet(uint8_t addr, uint8_t cmd, uint8_t *data, size_t len)
 {
-    if (addr != gAddressFilter)
-        return;
-
     /**
      * @brief 数据包基础长度 + 参数长度 + 校验和长度
      */
@@ -118,7 +115,7 @@ void send_packet(uint8_t addr, uint8_t cmd, uint8_t *data, size_t len)
 
     *checksum = checksum_tx(buf, packet_len_no_checksum);
 
-    HAL_UART_Transmit(&huart1, buf, packet_len_no_checksum, 100);
+    HAL_UART_Transmit(&huart1, buf, packet_len, 100);
 }
 
 /**

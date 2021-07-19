@@ -97,6 +97,9 @@ int main(void)
 
   /* USER CODE BEGIN SysInit */
 
+  /* start EasyLogger */
+  elog_start();
+
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -109,10 +112,6 @@ int main(void)
   /* Initialize interrupts */
   MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
-
-  /* start EasyLogger */
-  elog_start();
-
   wind_pendulum_init();
 
   //启动PWM

@@ -404,10 +404,9 @@ inv_error_t mpu6050_init(int sampleRate, bool useDMP)
     /**
      * @brief 初始化 MPU
      */
-    result = mpu_init(0);
-    if (result)
+    while (mpu_init(0))
     {
-        MPL_LOGE("Could not initialize gyro.\n");
+        HAL_Delay(1000);
     }
 
     /**
@@ -461,8 +460,6 @@ inv_error_t mpu6050_init(int sampleRate, bool useDMP)
     hal.next_pedo_ms = 0;
     hal.next_compass_ms = 0;
     hal.next_temp_ms = 0;
-
-    mpu_return_zero();
 
     if (useDMP)
     {
