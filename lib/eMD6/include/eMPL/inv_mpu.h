@@ -118,6 +118,9 @@ int mpu_run_self_test(long *gyro, long *accel);
 int mpu_run_6500_self_test(long *gyro, long *accel, unsigned char debug);
 int mpu_register_tap_cb(void (*func)(unsigned char, unsigned char));
 
+//获取静态偏差, 调零用
+int get_biases(long *gyro, long *accel);
+
 #ifdef __cplusplus
 }
 #endif

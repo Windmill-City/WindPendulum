@@ -129,7 +129,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     bool newData = false;
-    while (fifo_read(&newData))
+    while (read_fifo(&newData))
       ;
     if (newData)
     {

@@ -54,14 +54,8 @@ static inline int reg_int_cb(struct int_param_s *int_param)
 {
     return 0;
 }
-#define log_i(...) \
-    do             \
-    {              \
-    } while (0)
-#define log_e(...) \
-    do             \
-    {              \
-    } while (0)
+#define LOG_TAG "MPU_Internal"
+#include <elog.h>
 #define fabs fabsf
 #define min(a, b) ((a < b) ? a : b)
 #elif defined MOTION_DRIVER_TARGET_MSP430
@@ -344,6 +338,7 @@ struct gyro_state_s
 };
 
 /* Filter configurations. */
+//低通滤波器
 enum lpf_e
 {
     INV_FILTER_256HZ_NOLPF2 = 0,
@@ -358,6 +353,7 @@ enum lpf_e
 };
 
 /* Full scale ranges. */
+//量程
 enum gyro_fsr_e
 {
     INV_FSR_250DPS = 0,
@@ -386,6 +382,7 @@ enum clock_sel_e
 };
 
 /* Low-power accel wakeup rates. */
+//低功耗加速度唤醒 检测速率
 enum lp_accel_rate_e
 {
 #if defined MPU6050
@@ -550,6 +547,12 @@ const struct hw_s hw = {
 };
 
 const struct test_s test = {
+    /**
+     * @brief 传感器分辨率为 65536 (2^16)
+     * 量程 +-250dps
+     * 65536 / (250 * 2)
+     * = 32768 / 250 ->灵敏度
+     */
     .gyro_sens = 32768 / 250,
     .accel_sens = 32768 / 16,
     .reg_rate_div = 0,     /* 1kHz. */
@@ -2025,6 +2028,10 @@ int mpu_set_int_latched(unsigned char enable)
 }
 
 #ifdef MPU6050
+/**
+ * @brief 芯片生产时预置的自我测试偏差, 用于与 Current值 比较
+ * 偏差过大, 则认为当前自我测试失败
+ */
 static int get_accel_prod_shift(float *st_shift)
 {
     unsigned char tmp[4], shift_code[3], ii;
@@ -2061,6 +2068,7 @@ static int accel_self_test(long *bias_regular, long *bias_st)
     get_accel_prod_shift(st_shift);
     for (jj = 0; jj < 3; jj++)
     {
+        //自我测试响应值
         st_shift_cust = labs(bias_regular[jj] - bias_st[jj]) / 65536.f;
         if (st_shift[jj])
         {
@@ -2223,6 +2231,130 @@ AKM_restore:
 }
 #endif
 
+/**
+ * @brief 获取静态偏差, 用于调零
+ * 
+ * @param gyro 陀螺仪静差
+ * @param accel 加速度计静差
+ * @return int 0 -> 成功
+ */
+int get_biases(long *gyro, long *accel)
+{
+    unsigned char fifo_sensors, sensors_on;
+    unsigned char dmp_was_on;
+
+    if (st.chip_cfg.dmp_on)
+    {
+        mpu_set_dmp_state(0);
+        dmp_was_on = 1;
+    }
+    else
+        dmp_was_on = 0;
+
+    /* Get initial settings. */
+    sensors_on = st.chip_cfg.sensors;
+    mpu_get_fifo_config(&fifo_sensors);
+
+    unsigned char data[MAX_PACKET_LENGTH];
+    unsigned char packet_count, ii;
+    unsigned short fifo_count;
+
+    data[0] = 0;
+    if (i2c_write(st.hw->addr, st.reg->fifo_en, 1, data))
+        return -1;
+    data[0] = BIT_FIFO_RST | BIT_DMP_RST;
+    if (i2c_write(st.hw->addr, st.reg->user_ctrl, 1, data))
+        return -1;
+    delay_ms(15);
+
+    /* Fill FIFO for test.wait_ms milliseconds. */
+    data[0] = BIT_FIFO_EN;
+    if (i2c_write(st.hw->addr, st.reg->user_ctrl, 1, data))
+        return -1;
+
+    data[0] = INV_XYZ_GYRO | INV_XYZ_ACCEL;
+    if (i2c_write(st.hw->addr, st.reg->fifo_en, 1, data))
+        return -1;
+    delay_ms(test.wait_ms);
+    data[0] = 0;
+    if (i2c_write(st.hw->addr, st.reg->fifo_en, 1, data))
+        return -1;
+
+    if (i2c_read(st.hw->addr, st.reg->fifo_count_h, 2, data))
+        return -1;
+
+    fifo_count = (data[0] << 8) | data[1];
+    packet_count = fifo_count / MAX_PACKET_LENGTH;
+    gyro[0] = gyro[1] = gyro[2] = 0;
+    accel[0] = accel[1] = accel[2] = 0;
+
+    for (ii = 0; ii < packet_count; ii++)
+    {
+        short accel_cur[3], gyro_cur[3];
+        if (i2c_read(st.hw->addr, st.reg->fifo_r_w, MAX_PACKET_LENGTH, data))
+            return -1;
+        accel_cur[0] = ((short)data[0] << 8) | data[1];
+        accel_cur[1] = ((short)data[2] << 8) | data[3];
+        accel_cur[2] = ((short)data[4] << 8) | data[5];
+        //累加每个值
+        accel[0] += (long)accel_cur[0];
+        accel[1] += (long)accel_cur[1];
+        accel[2] += (long)accel_cur[2];
+        gyro_cur[0] = (((short)data[6] << 8) | data[7]);
+        gyro_cur[1] = (((short)data[8] << 8) | data[9]);
+        gyro_cur[2] = (((short)data[10] << 8) | data[11]);
+        gyro[0] += (long)gyro_cur[0];
+        gyro[1] += (long)gyro_cur[1];
+        gyro[2] += (long)gyro_cur[2];
+    }
+
+    unsigned char accel_fsr;
+    unsigned short gyro_fsr;
+
+    mpu_get_gyro_fsr(&gyro_fsr);
+    mpu_get_accel_fsr(&accel_fsr);
+
+    /**
+     * @brief 传感器分辨率为 65536 (2^16)
+     * 量程 +-250dps
+     * 65536 / (250 * 2)
+     * = 32768 / 250 ->灵敏度
+     */
+    unsigned long gyro_sens = 65536 / (gyro_fsr * 2);
+    unsigned long accel_sens = 65536 / (accel_fsr * 2);
+
+    /**
+     * @brief gyro << 16 -> gyro * 2^16 
+     * / 灵敏度 / 采样点数
+     */
+        gyro[0] = (long)(((long long)gyro[0] << 16) / gyro_sens / packet_count);
+    gyro[1] = (long)(((long long)gyro[1] << 16) / gyro_sens / packet_count);
+    gyro[2] = (long)(((long long)gyro[2] << 16) / gyro_sens / packet_count);
+    accel[0] = (long)(((long long)accel[0] << 16) / accel_sens /
+                      packet_count);
+    accel[1] = (long)(((long long)accel[1] << 16) / accel_sens /
+                      packet_count);
+    accel[2] = (long)(((long long)accel[2] << 16) / accel_sens /
+                      packet_count);
+
+    // /* Don't remove gravity! */
+    // if (accel[2] > 0L)
+    //     accel[2] -= 65536L;
+    // else
+    //     accel[2] += 65536L;
+
+    /* Set to invalid values to ensure no I2C writes are skipped. */
+    st.chip_cfg.sensors = 0xFF;
+    st.chip_cfg.fifo_enable = 0xFF;
+    mpu_set_sensors(sensors_on);
+    mpu_configure_fifo(fifo_sensors);
+
+    if (dmp_was_on)
+        mpu_set_dmp_state(1);
+
+    return 0;
+}
+
 static int get_st_biases(long *gyro, long *accel, unsigned char hw_test)
 {
     unsigned char data[MAX_PACKET_LENGTH];
@@ -2256,6 +2388,7 @@ static int get_st_biases(long *gyro, long *accel, unsigned char hw_test)
     if (i2c_write(st.hw->addr, st.reg->rate_div, 1, data))
         return -1;
     if (hw_test)
+        //打开各个轴的self test
         data[0] = st.test->reg_gyro_fsr | 0xE0;
     else
         data[0] = st.test->reg_gyro_fsr;
@@ -2300,6 +2433,7 @@ static int get_st_biases(long *gyro, long *accel, unsigned char hw_test)
         accel_cur[0] = ((short)data[0] << 8) | data[1];
         accel_cur[1] = ((short)data[2] << 8) | data[3];
         accel_cur[2] = ((short)data[4] << 8) | data[5];
+        //累加每个值
         accel[0] += (long)accel_cur[0];
         accel[1] += (long)accel_cur[1];
         accel[2] += (long)accel_cur[2];
@@ -2326,6 +2460,10 @@ static int get_st_biases(long *gyro, long *accel, unsigned char hw_test)
         accel[2] -= 65536L;
     }
 #else
+    /**
+     * @brief gyro << 16 -> gyro * 2^16 
+     * / 灵敏度 / 采样点数
+     */
     gyro[0] = (long)(((long long)gyro[0] << 16) / test.gyro_sens / packet_count);
     gyro[1] = (long)(((long long)gyro[1] << 16) / test.gyro_sens / packet_count);
     gyro[2] = (long)(((long long)gyro[2] << 16) / test.gyro_sens / packet_count);

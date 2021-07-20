@@ -64,7 +64,7 @@ static struct platform_data_s gyro_pdata = {
 /**
  * @brief DMP 轻敲事件回调 Tap Callback
  * 
- * @param direction 敲击面
+s * @param direction 敲击面
  * @param count 敲击次数
  */
 static void tap_cb(unsigned char direction, unsigned char count)
@@ -331,65 +331,6 @@ void dmp_init(int sampleRate)
 }
 
 /**
- * @brief MPU 归零
- */
-void mpu_return_zero()
-{
-    int result;
-    long gyro[3], accel[3];
-
-    result = mpu_run_self_test(gyro, accel);
-
-    if (result == 0x5)
-    {
-        MPL_LOGI("Passed!\n");
-        MPL_LOGI("accel: %7.4f %7.4f %7.4f\n",
-                 accel[0] / 65536.f,
-                 accel[1] / 65536.f,
-                 accel[2] / 65536.f);
-        MPL_LOGI("gyro: %7.4f %7.4f %7.4f\n",
-                 gyro[0] / 65536.f,
-                 gyro[1] / 65536.f,
-                 gyro[2] / 65536.f);
-
-        /* Push the calibrated data to the MPL library.
-         *
-         * MPL expects biases in hardware units << 16, but self test returns
-		 * biases in g's << 16.
-		 */
-        unsigned short accel_sens;
-        float gyro_sens;
-
-        mpu_get_accel_sens(&accel_sens);
-        accel[0] *= accel_sens;
-        accel[1] *= accel_sens;
-        accel[2] *= accel_sens;
-        inv_set_accel_bias(accel, 3);
-        dmp_set_accel_bias(accel);
-        mpu_get_gyro_sens(&gyro_sens);
-        gyro[0] = (long)(gyro[0] * gyro_sens);
-        gyro[1] = (long)(gyro[1] * gyro_sens);
-        gyro[2] = (long)(gyro[2] * gyro_sens);
-        inv_set_gyro_bias(gyro, 3);
-        dmp_set_gyro_bias(gyro);
-    }
-    else
-    {
-        if (!(result & 0x1))
-            MPL_LOGE("Gyro failed.\n");
-        if (!(result & 0x2))
-            MPL_LOGE("Accel failed.\n");
-        if (!(result & 0x4))
-            MPL_LOGE("Compass failed.\n");
-    }
-
-    /* Let MPL know that contiguity was broken. */
-    inv_accel_was_turned_off();
-    inv_gyro_was_turned_off();
-    inv_compass_was_turned_off();
-}
-
-/**
  * @brief 初始化 MPU6050
  * 
  * @param sampleRate 采样率
@@ -462,6 +403,8 @@ inv_error_t mpu6050_init(int sampleRate, bool useDMP)
         dmp_init(sampleRate);
     }
 
+    log_i("Initialized");
+
     return result;
 }
 
@@ -475,7 +418,7 @@ inv_error_t mpu6050_init(int sampleRate, bool useDMP)
  * @param newData 是否有新数据
  * @return FIFO中剩余数据量
  */
-uint8_t fifo_read(bool *newData)
+uint8_t read_fifo(bool *newData)
 {
     uint8_t more;
 
@@ -532,4 +475,57 @@ uint8_t fifo_read(bool *newData)
     }
 
     return more;
+}
+
+/**
+ * @brief MPU 归零
+ */
+void mpu_return_zero()
+{
+    log_i("Returning MPU to zero");
+    int result;
+    long gyro[3], accel[3];
+
+    while (get_biases(gyro, accel))
+    {
+        log_i("Failed to get biases!");
+        HAL_Delay(100);
+    }
+
+    log_i("Gyro Bias: %d %d %d", gyro[0], gyro[1], gyro[2]);
+    log_i("Accel Bias: %d %d %d", accel[0], accel[1], accel[2]);
+
+    //减去X轴重力, 本机X轴朝下
+    accel[0] -= 65536L;
+
+    /* Push the calibrated data to the MPL library.
+    *
+    * MPL expects biases in hardware units << 16, but self test returns
+    * biases in g's << 16.
+    */
+    unsigned short accel_sens;
+    float gyro_sens;
+
+    mpu_get_accel_sens(&accel_sens);
+    accel[0] *= accel_sens;
+    accel[1] *= accel_sens;
+    accel[2] *= accel_sens;
+
+    inv_set_accel_bias(accel, 3);
+    dmp_set_accel_bias(accel);
+
+    mpu_get_gyro_sens(&gyro_sens);
+    gyro[0] = (long)(gyro[0] * gyro_sens);
+    gyro[1] = (long)(gyro[1] * gyro_sens);
+    gyro[2] = (long)(gyro[2] * gyro_sens);
+
+    inv_set_gyro_bias(gyro, 3);
+    dmp_set_gyro_bias(gyro);
+
+    /* Let MPL know that contiguity was broken. */
+    inv_accel_was_turned_off();
+    inv_gyro_was_turned_off();
+    inv_compass_was_turned_off();
+
+    log_i("MPU has returned to zero!");
 }
