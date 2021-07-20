@@ -8,6 +8,9 @@
  * @copyright Copyright (c) 2021
  */
 
+#ifndef __SERVER_H__
+#define __SERVER_H__
+
 #include <stdio.h>
 #include <string.h>
 #include "usart.h"
@@ -208,3 +211,5 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         break;
     }
 }
+
+#endif

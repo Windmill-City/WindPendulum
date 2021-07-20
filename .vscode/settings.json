@@ -22,6 +22,7 @@
         "*.tcc": "cpp",
         "type_traits": "cpp",
         "elog.h": "c",
-        "elog_cfg.h": "c"
+        "elog_cfg.h": "c",
+        "cmsis_os.h": "c"
     }
 }

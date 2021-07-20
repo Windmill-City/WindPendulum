@@ -42,6 +42,26 @@ struct Euler
 };
 
 /**
+ * @brief 平台相关参数
+ */
+struct platform_data_s
+{
+    /**
+     * @brief 旋转矩阵，使芯片返回的 XYZ 方向与设备 XYZ 方向相同
+     * 芯片返回的 XYZ 方向与设备本身定义的 XYZ 方向可能不同，需要用此矩阵进行纠正
+     */
+    signed char orientation[9];
+};
+
+/**
+ * @brief 旋转矩阵, 根据你的 MPU 在设备中方位来设定
+ */
+static struct platform_data_s gyro_pdata = {
+    .orientation = {0, 0, -1,
+                    0, 1, 0,
+                    1, 0, 0}};
+
+/**
  * @brief DMP 轻敲事件回调 Tap Callback
  * 
  * @param direction 敲击面
@@ -181,26 +201,6 @@ static inv_error_t mpl_init()
     }
     return result;
 };
-
-/**
- * @brief 平台相关参数
- */
-struct platform_data_s
-{
-    /**
-     * @brief 旋转矩阵，使芯片返回的 XYZ 方向与设备 XYZ 方向相同
-     * 芯片返回的 XYZ 方向与设备本身定义的 XYZ 方向可能不同，需要用此矩阵进行纠正
-     */
-    signed char orientation[9];
-};
-
-/**
- * @brief 旋转矩阵, 根据你的 MPU 在设备中方位来设定
- */
-static struct platform_data_s gyro_pdata = {
-    .orientation = {1, 0, 0,
-                    0, 1, 0,
-                    0, 0, 1}};
 
 /**
  * @brief 配置 MPL参数
@@ -393,7 +393,6 @@ void mpu_return_zero()
  * @brief 初始化 MPU6050
  * 
  * @param sampleRate 采样率
- * @param gyro_data 旋转矩阵
  * @param useDMP 是否使用 DMP
  */
 inv_error_t mpu6050_init(int sampleRate, bool useDMP)
@@ -439,9 +438,6 @@ inv_error_t mpu6050_init(int sampleRate, bool useDMP)
      */
     mpu_set_sample_rate(sampleRate);
 
-    mpu_set_gyro_fsr(2000);
-    mpu_set_accel_fsr(2);
-
     /**
      * @brief 设定磁场计采样率, 单位 Hz
      * 
@@ -471,6 +467,7 @@ inv_error_t mpu6050_init(int sampleRate, bool useDMP)
 
 #include <stdlib.h>
 #include <string.h>
+#include "FireTools/PIDTuner.h"
 
 /**
  * @brief 读取 FIFO 中的数据， 并送入 MPL

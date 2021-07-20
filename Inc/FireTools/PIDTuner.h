@@ -8,6 +8,10 @@
  * @copyright Copyright (c) 2021
  */
 
+#ifndef __PIDTUNER_H__
+#define __PIDTUNER_H__
+
+
 #include "Server.h"
 
 #define LOG_TAG "[FireTools]PIDTuner"
@@ -152,3 +156,5 @@ void sync_period(uint8_t channel, unsigned int period)
  */
 #define CS_SET_PEIRIOD 0x15
 #pragma endregion
+
+#endif

@@ -35,18 +35,21 @@ void motor_ctl_update_energy(struct MotorController *motor_ctl, Energy energy, f
     int duty = (Duty)abs(energy);
 
     if (omega == 0)
-        return;
+    {
+        motor_doOp(&motor_ctl->left, Free, 0);
+        motor_doOp(&motor_ctl->right, Free, 0);
+    }
 
     if (signbit(energy) ^ signbit(omega))
     {
         log_i("[%d]逆时针用力");
         motor_doOp(&motor_ctl->left, Forward, duty);
-        motor_doOp(&motor_ctl->right, Backward, duty);
+        motor_doOp(&motor_ctl->right, Brake, duty);
     }
     else
     {
         log_i("[%d]顺时针用力");
-        motor_doOp(&motor_ctl->left, Backward, duty);
+        motor_doOp(&motor_ctl->left, Brake, duty);
         motor_doOp(&motor_ctl->right, Forward, duty);
     }
 }

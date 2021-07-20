@@ -101,17 +101,17 @@ void load_straight_line_pid()
     pid_reset_all(&pidXZ);
     pid_reset_all(&pidYZ);
 
-    struct PIDParam pXZ = {0, 0, 0, 0};
-    struct PIDParam pYZ = {100, 3000, 4000, 200};
+    struct PIDParam pXZ = {0, 0, 0, 200};
+    struct PIDParam pYZ = {0, 0, 0, 200};
 
     pidXZ.param = pXZ;
     pidYZ.param = pYZ;
 
     targetAngleXZ = 30;
-    targetAngleYZ = 30;
+    targetAngleYZ = 0;
 
-    targetPhaseXZ = 45;
-    targetPhaseYZ = 45;
+    targetPhaseXZ = 90;
+    targetPhaseYZ = -90;
 
     sync_pid(CH1, pidXZ.param.P, pidXZ.param.I, pidXZ.param.D);
     sync_pid(CH4, pidYZ.param.P, pidYZ.param.I, pidYZ.param.D);
@@ -199,7 +199,7 @@ void PacketHandler(pPacketBase packet, uint8_t *data, size_t len)
  */
 void wind_pendulum_init()
 {
-    mpu6050_init(20, true);
+    mpu6050_init(10, true);
     mpu_return_zero();
 
     //XZ平面
@@ -267,12 +267,12 @@ void wind_pendulum_init()
  * 
  * @param time 时间, 毫秒
  * @param maxAngle 最大摆角, 角度
- * @param phase 相位差, 弧度
+ * @param phase 相位差, 角度
  * @return float 摆角, 角度
  */
 float getAngleByTime(uint32_t time, float maxAngle, float phase)
 {
-    return ToAngle(ToRad(maxAngle) * cos(Omega * time / 1000.0f + phase));
+    return ToAngle(ToRad(maxAngle) * cos(Omega * time / 1000.0f + ToRad(phase)));
 }
 
 /**
@@ -301,7 +301,13 @@ void update_motor_state()
     log_i("Angle Current:%f Expect:%f, Err:%f", attr.euler.Roll, expectAngleXZ, errAngleXZ);
     log_i("Omega Current:%f Expect:%f, Err:%f", attr.omegaTheta, expectOmegaXZ, errOmegaXZ);
 
+    send_actual(CH1, attr.euler.Pitch);
+    send_target(CH1, expectAngleXZ);
+
     float energyXZ = pid_push_new_err(&pidXZ, errAngleXZ);
+    send_target(CH2, pidXZ.integral);
+    send_actual(CH2, pidXZ.err);
+    send_actual(CH3, energyXZ / 360);
     motor_ctl_update_energy(&motorXZ, energyXZ, attr.omegaTheta);
 
     float expectAngleYZ = getAngleByTime(HAL_GetTick(), targetAngleYZ, targetPhaseYZ);
@@ -310,19 +316,15 @@ void update_motor_state()
     float errAngleYZ = expectAngleYZ - attr.euler.Pitch;
     float errOmegaYZ = attr.omegaTheta - expectOmegaYZ;
 
-    send_actual(CH2, pidXZ.integral);
-
-    send_actual(CH3, errAngleYZ);
-
-    send_actual(CH4, attr.euler.Pitch);
-    send_target(CH4, expectAngleYZ);
-
     log_i("Angle Current:%f Expect:%f, Err:%f", attr.euler.Pitch, expectAngleYZ, errAngleYZ);
     log_i("Omega Current:%f Expect:%f, Err:%f", attr.omegaPhi, expectOmegaYZ, errOmegaYZ);
 
+    //send_actual(CH4, attr.euler.Pitch);
+    //send_target(CH4, expectAngleYZ);
+
     float energyYZ = pid_push_new_err(&pidYZ, errAngleYZ);
-    //send_actual(CH5, energyYZ / 36000 * 100);
+    //send_actual(CH3, pidYZ.integral);
     motor_ctl_update_energy(&motorYZ, energyYZ, attr.omegaPhi);
 
-    HAL_Delay(5);
+    HAL_Delay(10);
 }
