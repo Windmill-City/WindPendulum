@@ -96,6 +96,8 @@ int targetAngleYZ;
 int targetPhaseXZ;
 int targetPhaseYZ;
 
+bool waitStable = false;
+
 #define PI acos(-1)
 
 #define ToRad(x) (x / 57.3f)
@@ -113,7 +115,8 @@ void load_straight_line_pid()
     pidYZ.param = pYZ;
 
     targetAngleXZ = 0; //atan( 0.25 / R ) * 180 / 3.14 ;//0;
-    targetAngleYZ = 0;;//ToAngle(atan(0.3 / R));
+    targetAngleYZ = 0;
+    ; //ToAngle(atan(0.3 / R));
 
     targetPhaseXZ = 0;
     targetPhaseYZ = 0;
@@ -141,17 +144,7 @@ void PacketHandler(pPacketBase packet, uint8_t *data, size_t len)
             pidYZ.param.D = pid[2];
             break;
         }
-        pid_reset_all(&pidXZ);
-        pid_reset_all(&pidYZ);
-        motor_ctl_update_energy(&motorXZ, 0, 0);
-        motor_ctl_update_energy(&motorYZ, 0, 0);
-        while (true)
-        {
-            HAL_IWDG_Refresh(&hiwdg);
-            struct Attribute attr = fetchAttr();
-            if (abs(attr.omegaPhi) < 0.01 && abs(attr.omegaTheta) < 0.01)
-                break;
-        }
+        waitStable = true;
         break;
     case CS_SET_TARGET:
         switch (packet->addr)
@@ -302,6 +295,17 @@ float getOmegaByTime(uint32_t time, float maxAngle, float phase)
 void update_motor_state()
 {
     struct Attribute attr = fetchAttr();
+
+    if (waitStable)
+    {
+        pid_reset_all(&pidXZ);
+        pid_reset_all(&pidYZ);
+        motor_ctl_update_energy(&motorXZ, 0, 0);
+        motor_ctl_update_energy(&motorYZ, 0, 0);
+        if (abs(attr.omegaPhi) < 0.1 && abs(attr.omegaTheta) < 0.1 && abs(attr.euler.Pitch) < 1 && abs(attr.euler.Roll) < 1)
+            waitStable = false;
+        return;
+    }
 
     float expectAngleXZ = getAngleByTime(HAL_GetTick(), targetAngleXZ, targetPhaseXZ);
     float expectOmegaXZ = getOmegaByTime(HAL_GetTick(), targetAngleXZ, targetPhaseXZ);
