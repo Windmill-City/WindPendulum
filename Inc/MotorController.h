@@ -5,6 +5,10 @@
 
 #include <elog.h>
 
+#define min(a, b) ((a < b) ? a : b)
+#define max(a, b) ((a > b) ? a : b)
+#define clamp(vl, v, vh) max(vl, min(v, vh))
+
 typedef float Energy;
 
 /**
@@ -32,7 +36,7 @@ struct MotorController
 void motor_ctl_update_energy(struct MotorController *motor_ctl, Energy energy, float omega)
 {
     log_i("[%d]Update Energy:%f, Omega:%f", motor_ctl->Id, energy, omega);
-    int duty = (Duty)abs(energy);
+    int duty = (Duty)min(abs(energy), 65535);
 
     if (abs(omega) < 0.01 || abs(energy) < 600)
     {
