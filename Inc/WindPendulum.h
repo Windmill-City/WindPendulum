@@ -311,7 +311,7 @@ void update_motor_state()
     float expectOmegaXZ = getOmegaByTime(HAL_GetTick(), targetAngleXZ, targetPhaseXZ);
 
     float errAngleXZ = expectAngleXZ - attr.euler.Roll;
-    float errOmegaXZ = attr.omegaTheta - expectOmegaXZ;
+    float errOmegaXZ = expectOmegaXZ - attr.omegaTheta;
 
     log_i("Angle Current:%f Expect:%f, Err:%f", attr.euler.Roll, expectAngleXZ, errAngleXZ);
     log_i("Omega Current:%f Expect:%f, Err:%f", attr.omegaTheta, expectOmegaXZ, errOmegaXZ);
@@ -329,7 +329,7 @@ void update_motor_state()
     float expectOmegaYZ = getOmegaByTime(HAL_GetTick(), targetAngleYZ, targetPhaseYZ);
 
     float errAngleYZ = expectAngleYZ - attr.euler.Pitch;
-    float errOmegaYZ = attr.omegaTheta - expectOmegaYZ;
+    float errOmegaYZ = expectOmegaYZ - attr.omegaPhi;
 
     log_i("Angle Current:%f Expect:%f, Err:%f", attr.euler.Pitch, expectAngleYZ, errAngleYZ);
     log_i("Omega Current:%f Expect:%f, Err:%f", attr.omegaPhi, expectOmegaYZ, errOmegaYZ);
