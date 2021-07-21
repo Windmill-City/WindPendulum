@@ -112,14 +112,14 @@ void load_straight_line_pid()
     pidXZ.param = pXZ;
     pidYZ.param = pYZ;
 
-    targetAngleXZ = 0;//atan( 0.25 / R ) * 180 / 3.14 ;//0;
-    targetAngleYZ = ToAngle(atan( 0.3 / R ));
+    targetAngleXZ = 0; //atan( 0.25 / R ) * 180 / 3.14 ;//0;
+    targetAngleYZ = 0;;//ToAngle(atan(0.3 / R));
 
     targetPhaseXZ = 0;
     targetPhaseYZ = 0;
 
-    sync_pid(CH1, pidXZ.param.P, pidXZ.param.I, pidXZ.param.D);
-    sync_pid(CH4, pidYZ.param.P, pidYZ.param.I, pidYZ.param.D);
+    //sync_pid(CH1, pidXZ.param.P, pidXZ.param.I, pidXZ.param.D);
+    //sync_pid(CH4, pidYZ.param.P, pidYZ.param.I, pidYZ.param.D);
 }
 
 void PacketHandler(pPacketBase packet, uint8_t *data, size_t len)
@@ -141,6 +141,8 @@ void PacketHandler(pPacketBase packet, uint8_t *data, size_t len)
             pidYZ.param.D = pid[2];
             break;
         }
+        pid_reset_all(&pidXZ);
+        pid_reset_all(&pidYZ);
         break;
     case CS_SET_TARGET:
         switch (packet->addr)
