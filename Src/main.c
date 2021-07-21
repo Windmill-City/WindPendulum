@@ -136,8 +136,8 @@ int main(void)
     if (newData)
     {
       update_motor_state();
+      HAL_IWDG_Refresh(&hiwdg);
     }
-    HAL_IWDG_Refresh(&hiwdg);
   }
   /* USER CODE END 3 */
 }
