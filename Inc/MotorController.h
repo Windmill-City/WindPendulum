@@ -36,7 +36,7 @@ struct MotorController
 void motor_ctl_update_energy(struct MotorController *motor_ctl, Energy energy, float omega)
 {
     log_i("[%d]Update Energy:%f, Omega:%f", motor_ctl->Id, energy, omega);
-    int duty = (Duty)min(abs(energy), 65535);
+    int duty = (Duty)min(abs(energy), 36000);
 
     if (abs(omega) < 0.01 || abs(energy) < 600)
     {

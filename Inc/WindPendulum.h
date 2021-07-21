@@ -96,6 +96,11 @@ int targetAngleYZ;
 int targetPhaseXZ;
 int targetPhaseYZ;
 
+#define PI acos(-1)
+
+#define ToRad(x) (x / 57.3f)
+#define ToAngle(x) (x * 57.3f)
+
 void load_straight_line_pid()
 {
     pid_reset_all(&pidXZ);
@@ -107,8 +112,8 @@ void load_straight_line_pid()
     pidXZ.param = pXZ;
     pidYZ.param = pYZ;
 
-    targetAngleXZ = 15;
-    targetAngleYZ = 0;
+    targetAngleXZ = 0;//atan( 0.25 / R ) * 180 / 3.14 ;//0;
+    targetAngleYZ = ToAngle(atan( 0.3 / R ));
 
     targetPhaseXZ = 0;
     targetPhaseYZ = 0;
@@ -221,7 +226,7 @@ void wind_pendulum_init()
     motorXZ.right.pwmGenerater.duty = &TIM1->CCR2;
 
     //YZ平面
-    motorYZ.Id = 3;
+    motorYZ.Id = 2;
     motorYZ.left.Id = 3;
     motorYZ.left.Port_IN1 = YL_IN1_GPIO_Port;
     motorYZ.left.Pin_IN1 = YL_IN1_Pin;
@@ -246,11 +251,6 @@ void wind_pendulum_init()
 
     load_straight_line_pid();
 }
-
-#define PI acos(-1)
-
-#define ToRad(x) (x / 57.3f)
-#define ToAngle(x) (x * 57.3f)
 
 /**
  * @brief 单摆运动周期
