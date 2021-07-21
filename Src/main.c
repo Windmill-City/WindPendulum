@@ -109,7 +109,6 @@ int main(void)
   MX_TIM1_Init();
   MX_USART1_UART_Init();
   MX_I2C2_Init();
-  MX_IWDG_Init();
 
   /* Initialize interrupts */
   MX_NVIC_Init();
@@ -121,6 +120,8 @@ int main(void)
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+
+  MX_IWDG_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -131,8 +132,9 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     bool newData = false;
-    while (read_fifo(&newData))
-      ;
+    while (read_fifo(&newData)){
+      HAL_IWDG_Refresh(&hiwdg);
+    }
     if (newData)
     {
       update_motor_state();
