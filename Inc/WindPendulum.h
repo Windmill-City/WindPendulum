@@ -112,8 +112,8 @@ void load_straight_line_pid()
     pidXZ.param = pXZ;
     pidYZ.param = pYZ;
 
-    targetAngleXZ = 0;//atan( 0.25 / R ) * 180 / 3.14 ;//0;
-    targetAngleYZ = ToAngle(atan( 0.3 / R ));
+    targetAngleXZ = 0; //atan( 0.25 / R ) * 180 / 3.14 ;//0;
+    targetAngleYZ = ToAngle(atan(0.3 / R));
 
     targetPhaseXZ = 0;
     targetPhaseYZ = 0;
@@ -140,6 +140,17 @@ void PacketHandler(pPacketBase packet, uint8_t *data, size_t len)
             pidYZ.param.I = pid[1];
             pidYZ.param.D = pid[2];
             break;
+        }
+        pid_reset_all(&pidXZ);
+        pid_reset_all(&pidYZ);
+        motor_ctl_update_energy(&motorXZ, 0, 0);
+        motor_ctl_update_energy(&motorYZ, 0, 0);
+        while (true)
+        {
+            HAL_IWDG_Refresh(&hiwdg);
+            struct Attribute attr = fetchAttr();
+            if (abs(attr.omegaPhi) < 0.01 && abs(attr.omegaTheta) < 0.01)
+                break;
         }
         break;
     case CS_SET_TARGET:
