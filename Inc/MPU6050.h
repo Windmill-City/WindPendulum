@@ -386,6 +386,8 @@ inv_error_t mpu6050_init(int sampleRate, bool useDMP)
      */
     //mpu_set_compass_sample_rate(1000 / COMPASS_READ_MS);
 
+    mpu_set_lpf(188);
+
     mpl_init();
 
     mpl_config();

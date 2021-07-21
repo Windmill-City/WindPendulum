@@ -34,7 +34,7 @@ void motor_ctl_update_energy(struct MotorController *motor_ctl, Energy energy, f
     log_i("[%d]Update Energy:%f, Omega:%f", motor_ctl->Id, energy, omega);
     int duty = (Duty)abs(energy);
 
-    if (omega == 0)
+    if (abs(omega) < 0.01 || abs(energy) < 600)
     {
         motor_doOp(&motor_ctl->left, Free, 0);
         motor_doOp(&motor_ctl->right, Free, 0);

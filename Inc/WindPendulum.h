@@ -25,7 +25,7 @@
 /**
  * @brief 单摆半径
  */
-#define R 0.60
+#define R 0.84
 
 struct Attribute
 {
@@ -101,17 +101,17 @@ void load_straight_line_pid()
     pid_reset_all(&pidXZ);
     pid_reset_all(&pidYZ);
 
-    struct PIDParam pXZ = {0, 0, 0, 200};
-    struct PIDParam pYZ = {0, 0, 0, 200};
+    struct PIDParam pXZ = {0, 0, 0, 180};
+    struct PIDParam pYZ = {0, 0, 0, 180};
 
     pidXZ.param = pXZ;
     pidYZ.param = pYZ;
 
-    targetAngleXZ = 30;
+    targetAngleXZ = 15;
     targetAngleYZ = 0;
 
-    targetPhaseXZ = 90;
-    targetPhaseYZ = -90;
+    targetPhaseXZ = 0;
+    targetPhaseYZ = 0;
 
     sync_pid(CH1, pidXZ.param.P, pidXZ.param.I, pidXZ.param.D);
     sync_pid(CH4, pidYZ.param.P, pidYZ.param.I, pidYZ.param.D);
@@ -199,7 +199,7 @@ void PacketHandler(pPacketBase packet, uint8_t *data, size_t len)
  */
 void wind_pendulum_init()
 {
-    mpu6050_init(10, true);
+    mpu6050_init(20, true);
     mpu_return_zero();
 
     //XZ平面
@@ -301,7 +301,7 @@ void update_motor_state()
     log_i("Angle Current:%f Expect:%f, Err:%f", attr.euler.Roll, expectAngleXZ, errAngleXZ);
     log_i("Omega Current:%f Expect:%f, Err:%f", attr.omegaTheta, expectOmegaXZ, errOmegaXZ);
 
-    send_actual(CH1, attr.euler.Pitch);
+    send_actual(CH1, attr.euler.Roll);
     send_target(CH1, expectAngleXZ);
 
     float energyXZ = pid_push_new_err(&pidXZ, errAngleXZ);
@@ -319,12 +319,12 @@ void update_motor_state()
     log_i("Angle Current:%f Expect:%f, Err:%f", attr.euler.Pitch, expectAngleYZ, errAngleYZ);
     log_i("Omega Current:%f Expect:%f, Err:%f", attr.omegaPhi, expectOmegaYZ, errOmegaYZ);
 
-    //send_actual(CH4, attr.euler.Pitch);
-    //send_target(CH4, expectAngleYZ);
+    send_actual(CH4, attr.euler.Pitch);
+    send_target(CH4, expectAngleYZ);
 
     float energyYZ = pid_push_new_err(&pidYZ, errAngleYZ);
     //send_actual(CH3, pidYZ.integral);
     motor_ctl_update_energy(&motorYZ, energyYZ, attr.omegaPhi);
 
-    HAL_Delay(10);
+    HAL_Delay(5);
 }

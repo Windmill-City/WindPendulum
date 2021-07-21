@@ -87,6 +87,7 @@ void set_motor_mode(struct Motor *motor, MotorMode mode)
 void motor_doOp(struct Motor *motor, MotorMode mode, Duty duty)
 {
     log_i("[%d]Do operation: Mode:%d Duty:%d", motor->Id, mode, duty);
+    max(0, duty);
     set_motor_mode(motor, mode);
     set_pwm_duty(motor->pwmGenerater, duty);
 }
